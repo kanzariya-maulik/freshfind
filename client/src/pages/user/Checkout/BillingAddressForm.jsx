@@ -1,163 +1,171 @@
-import React, { useState } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
-import axios from 'axios';
-import 'react-toastify/dist/ReactToastify.css';
+import React, { useEffect } from "react";
+import { Form, Input, Button, Row, Col, message } from "antd";
+import axios from "axios";
 
-const BillingAddressForm = ({ userId ,fetchAddresses}) => {
-    const [formData, setFormData] = useState({
-        billingFirstName: '',
-        billingLastName: '',
-        billingAddress: '',
-        billingApartment: '',
-        billingCity: '',
-        billingState: '',
-        billingPinCode: '',
-        billingPhone: ''
-    });
+const BillingAddressForm = ({ userId, fetchAddresses }) => {
+  const [form] = Form.useForm();
 
-    const [errors, setErrors] = useState({});
-
-    const getFieldLabel = (fieldName) => {
-        const fieldLabels = {
-            billingFirstName: "First Name",
-            billingLastName: "Last Name",
-            billingCity: "City",
-            billingState: "State",
-            billingAddress: "Street Address",
-            billingPinCode: "Pin Code",
-            billingPhone: "Phone Number",
-        };
-        return fieldLabels[fieldName] || "This field";
+  const handleSubmit = async (values) => {
+    const payload = {
+      userId,
+      fullName: `${values.billingFirstName} ${values.billingLastName}`,
+      address:
+        values.billingAddress +
+        (values.billingApartment ? `, ${values.billingApartment}` : ""),
+      city: values.billingCity,
+      state: values.billingState,
+      pincode: Number(values.billingPinCode),
+      phone: values.billingPhone,
     };
 
-    const validateField = (name, value) => {
-        if (!value.trim()) return `${getFieldLabel(name)} is required`;
+    try {
+      await axios.post("http://localhost:8000/addresses/", payload);
+      message.success("Billing address saved successfully!");
+      form.resetFields();
+      fetchAddresses(userId);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to save address. Please try again.");
+    }
+  };
 
-        if (["billingFirstName", "billingLastName", "billingCity", "billingState"].includes(name)) {
-            if (!/^[A-Za-z\s]+$/.test(value)) return `${getFieldLabel(name)} should contain only letters`;
-            if (value.length < 3 || value.length > 50) return `${getFieldLabel(name)} must be between 3 and 50 characters`;
-        }
+  const validatePhone = (_, value) => {
+    if (!value) return Promise.reject(new Error("Phone number is required"));
+    if (!/^\d{10}$/.test(value))
+      return Promise.reject(new Error("Phone number must be 10 digits"));
+    return Promise.resolve();
+  };
 
-        if (name === "billingAddress" && (value.length < 5 || value.length > 100)) {
-            return "Street Address must be between 5 and 100 characters";
-        }
+  const validatePinCode = (_, value) => {
+    if (!value) return Promise.reject(new Error("Pin Code is required"));
+    if (!/^\d{6}$/.test(value))
+      return Promise.reject(new Error("Pin Code must be 6 digits"));
+    return Promise.resolve();
+  };
 
-        if (name === "billingPinCode" && !/^\d{6}$/.test(value)) {
-            return "Pin Code must be exactly 6 digits";
-        }
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      style={{ maxWidth: 800, margin: "0 auto" }}
+    >
+      <h2>Billing Details</h2>
 
-        if (name === "billingPhone" && !/^\d{10}$/.test(value)) {
-            return "Phone number must be exactly 10 digits";
-        }
+      <Row gutter={16}>
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="First Name"
+            name="billingFirstName"
+            rules={[
+              { required: true, message: "First Name is required" },
+              {
+                min: 3,
+                max: 50,
+                message: "Must be between 3 and 50 characters",
+              },
+              { pattern: /^[A-Za-z\s]+$/, message: "Only letters allowed" },
+            ]}
+          >
+            <Input placeholder="First Name" />
+          </Form.Item>
+        </Col>
 
-        return null;
-    };
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="Last Name"
+            name="billingLastName"
+            rules={[
+              { required: true, message: "Last Name is required" },
+              {
+                min: 3,
+                max: 50,
+                message: "Must be between 3 and 50 characters",
+              },
+              { pattern: /^[A-Za-z\s]+$/, message: "Only letters allowed" },
+            ]}
+          >
+            <Input placeholder="Last Name" />
+          </Form.Item>
+        </Col>
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setErrors(prev => ({ ...prev, [name]: validateField(name, value) }));
-    };
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="City"
+            name="billingCity"
+            rules={[
+              { required: true, message: "City is required" },
+              { pattern: /^[A-Za-z\s]+$/, message: "Only letters allowed" },
+            ]}
+          >
+            <Input placeholder="City" />
+          </Form.Item>
+        </Col>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const newErrors = {};
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="State"
+            name="billingState"
+            rules={[
+              { required: true, message: "State is required" },
+              { pattern: /^[A-Za-z\s]+$/, message: "Only letters allowed" },
+            ]}
+          >
+            <Input placeholder="State" />
+          </Form.Item>
+        </Col>
 
-        Object.keys(formData).forEach(field => {
-            const error = validateField(field, formData[field]);
-            if (error) newErrors[field] = error;
-        });
+        <Col xs={24}>
+          <Form.Item
+            label="Street Address"
+            name="billingAddress"
+            rules={[
+              { required: true, message: "Street Address is required" },
+              {
+                min: 5,
+                max: 100,
+                message: "Must be between 5 and 100 characters",
+              },
+            ]}
+          >
+            <Input.TextArea placeholder="Street Address" rows={2} />
+          </Form.Item>
+        </Col>
 
-        if (Object.keys(newErrors).length > 0) {
-            setErrors(newErrors);
-            toast.error("Please correct the highlighted fields.");
-            return;
-        }
+        <Col xs={24}>
+          <Form.Item label="Apartment, Floor, etc." name="billingApartment">
+            <Input.TextArea placeholder="Apartment, Floor, etc." rows={2} />
+          </Form.Item>
+        </Col>
 
-        // Construct address object for API
-        const payload = {
-            userId, // passed as prop
-            fullName: `${formData.billingFirstName} ${formData.billingLastName}`,
-            address: formData.billingAddress + (formData.billingApartment ? `, ${formData.billingApartment}` : ''),
-            city: formData.billingCity,
-            state: formData.billingState,
-            pincode: Number(formData.billingPinCode),
-            phone: formData.billingPhone
-        };
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="Pin Code"
+            name="billingPinCode"
+            rules={[{ validator: validatePinCode }]}
+          >
+            <Input placeholder="Pin Code" maxLength={6} />
+          </Form.Item>
+        </Col>
 
-        try {
-            const res = await axios.post('http://localhost:8000/addresses/', payload);
-            toast.success('Billing address saved successfully!');
-            setFormData({
-                billingFirstName: '',
-                billingLastName: '',
-                billingAddress: '',
-                billingApartment: '',
-                billingCity: '',
-                billingState: '',
-                billingPinCode: '',
-                billingPhone: ''
-            });
-            fetchAddresses(userId);
-        } catch (err) {
-            console.error(err);
-            toast.error('Failed to save address. Please try again.');
-        }
-    };
+        <Col xs={24} sm={12}>
+          <Form.Item
+            label="Phone Number"
+            name="billingPhone"
+            rules={[{ validator: validatePhone }]}
+          >
+            <Input placeholder="Phone Number" maxLength={10} />
+          </Form.Item>
+        </Col>
+      </Row>
 
-    return (
-        <>
-            <ToastContainer />
-            <form id="billingForm" className="billing-details form" onSubmit={handleSubmit}>
-                <div className="mb-4">
-                    <h2 className="mt-2">Billing Details</h2>
-                    <div className="row gx-2 gy-3">
-                        {['billingFirstName', 'billingLastName', 'billingCity', 'billingState', 'billingPinCode', 'billingPhone'].map((field, index) => (
-                            <div className="col-12 col-sm-6" key={index}>
-                                <label className="form-label d-block">{getFieldLabel(field)}<span className="required">*</span></label>
-                                <input
-                                    name={field}
-                                    type="text"
-                                    className="w-100"
-                                    placeholder={getFieldLabel(field)}
-                                    value={formData[field]}
-                                    onChange={handleChange}
-                                />
-                                {errors[field] && <p className="error text-danger">{errors[field]}</p>}
-                            </div>
-                        ))}
-                        <div className="col-12">
-                            <label className="form-label d-block">Street Address<span className="required">*</span></label>
-                            <textarea
-                                name="billingAddress"
-                                className="w-100"
-                                rows="2"
-                                placeholder="Street Address"
-                                value={formData.billingAddress}
-                                onChange={handleChange}
-                            />
-                            {errors.billingAddress && <p className="error text-danger">{errors.billingAddress}</p>}
-                        </div>
-                        <div className="col-12">
-                            <label className="form-label d-block">Apartment, Floor, etc.<span className="required">*</span></label>
-                            <textarea
-                                name="billingApartment"
-                                className="w-100"
-                                rows="2"
-                                placeholder="Apartment, Floor, etc."
-                                value={formData.billingApartment}
-                                onChange={handleChange}
-                            />
-                              {errors.billingApartment && <p className="error text-danger">{errors.billingApartment}</p>}
-                        </div>
-                    </div>
-                </div>
-                <div className="d-flex justify-content-end">
-                    <input type="submit" value="Save Address" className="primary-btn js-filter-btn mt-2" />
-                </div>
-            </form>
-        </>
-    );
+      <Form.Item>
+        <Button type="primary" htmlType="submit">
+          Save Address
+        </Button>
+      </Form.Item>
+    </Form>
+  );
 };
 
 export default BillingAddressForm;

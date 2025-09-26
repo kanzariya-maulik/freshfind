@@ -1,150 +1,188 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { Table, Card, Descriptions, Divider, Image, Spin } from "antd";
 import axios from "axios";
 
 const ViewOrder = () => {
-    const { orderId } = useParams();
-    const [order, setOrder] = useState(null);
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { orderId } = useParams();
+  const [order, setOrder] = useState(null);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchOrder = async () => {
-            try {
-                const res = await axios.get(`http://localhost:8000/orders/${orderId}`);
-                const { order, orderItems } = res.data;
-                setOrder(order);
-                setProducts(orderItems || []);
-                console.log("Order fetched successfully:", order);
-            } catch (error) {
-                console.error("Failed to fetch order:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrder();
+  useEffect(() => {
+    const fetchOrder = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/orders/${orderId}`);
+        const { order, orderItems } = res.data;
+        setOrder(order);
+        setProducts(orderItems || []);
+      } catch (error) {
+        console.error("Failed to fetch order:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrder();
+  }, [orderId]);
 
-    }, [orderId]);
+  if (loading) return <Spin tip="Loading..." style={{ marginTop: 50 }} />;
+  if (!order) return <div>Order not found.</div>;
 
-    if (loading) return <div>Loading...</div>;
-    if (!order) return <div>Order not found.</div>;
+  // Safely parse decimal values
+  const shippingCharge = parseFloat(order.shippingCharge?.$numberDecimal || 0);
+  const total = parseFloat(order.total?.$numberDecimal || 0);
+  let actualTotal = 0;
 
-    // Safely parse decimal values
-    const shippingCharge = parseFloat(order.shippingCharge?.$numberDecimal || 0);
-    const total = parseFloat(order.total?.$numberDecimal || 0);
-    let subtotal = total - shippingCharge;
-    let actualTotal = 0;
+  const columns = [
+    {
+      title: "Item Image",
+      dataIndex: ["productId", "productImage"],
+      key: "image",
+      render: (src, record) => (
+        <Image width={50} src={src} alt={record.productId.productName} />
+      ),
+    },
+    {
+      title: "Item Name",
+      dataIndex: ["productId", "productName"],
+      key: "name",
+    },
+    {
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
+      render: (price) =>
+        `₹${parseFloat(price?.$numberDecimal || 0).toFixed(2)}`,
+    },
+    {
+      title: "Quantity",
+      dataIndex: "quantity",
+      key: "quantity",
+    },
+    {
+      title: "Total",
+      key: "total",
+      render: (_, record) => {
+        const price = parseFloat(record.price?.$numberDecimal || 0);
+        const totalItem = price * record.quantity;
+        actualTotal += totalItem;
+        return `₹${totalItem.toFixed(2)}`;
+      },
+    },
+  ];
 
-    return (
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
         <div>
-            <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-                <div>
-                    <h1>View Order</h1>
-                    <ol className="breadcrumb mb-0">
-                        <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                        <li className="breadcrumb-item"><Link to="/admin/orders">Orders</Link></li>
-                        <li className="breadcrumb-item active">View Order</li>
-                    </ol>
-                </div>
-            </div>
-
-            <div className="card mb-4">
-                <div className="card-header"><h5>Order Details</h5></div>
-                <div className="card-body">
-                    <p><strong>Order ID:</strong> {order._id}</p>
-                    <p><strong>Status:</strong> {order.orderStatus}</p>
-                    <p><strong>Order Date:</strong> {new Date(order.orderDate).toLocaleDateString()}</p>
-                    <p><strong>Payment Mode:</strong> {order.paymentMode}</p>
-                    <p><strong>Payment Status:</strong> {order.paymentStatus}</p>
-                </div>
-            </div>
-
-            <div className="row">
-                <div className="col-md-6">
-                    <div className="card mb-4">
-                        <div className="card-header"><h5>Shipping Address</h5></div>
-                        <div className="card-body">
-                            <p><strong>Name:</strong> {order.delAddressId.fullName}</p>
-                            <p><strong>Address:</strong> {order.delAddressId.address}</p>
-                            <p><strong>City:</strong> {order.delAddressId.city}</p>
-                            <p><strong>State:</strong> {order.delAddressId.state}</p>
-                            <p><strong>Zip Code:</strong> {order.delAddressId.pincode}</p>
-                            <p><strong>Phone:</strong> {order.delAddressId.phone}</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-6">
-                    <div className="card mb-4">
-                        <div className="card-header"><h5>User Information</h5></div>
-                        <div className="card-body">
-                            <p><strong>Name:</strong> {order.userId.firstName} {order.userId.lastName}</p>
-                            <p><strong>Email:</strong> {order.userId.email}</p>
-                            <p><strong>Phone:</strong> {order.userId.mobile}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="card mb-4">
-                <div className="card-header"><h5>Ordered Items</h5></div>
-                <div className="card-body">
-                    <table className="table border">
-                        <thead className="table-light">
-                            <tr>
-                                <th>Item Image</th>
-                                <th>Item Name</th>
-                                <th>Price</th>
-                                <th>Quantity</th>
-                                <th>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {products.map((item) => {
-                                const price = parseFloat(item.price?.$numberDecimal || 0);
-                                const totalItem = price * item.quantity;
-                                actualTotal += totalItem;
-                                return (
-                                    <tr key={item.productId._id}>
-                                        <td>
-                                            <img
-                                                src={item.productId.productImage}
-                                                alt={item.productId.productName}
-                                                width="50"
-                                            />
-                                        </td>
-                                        <td>{item.productId.productName}</td>
-                                        <td>₹{price.toFixed(2)}</td>
-                                        <td>{item.quantity}</td>
-                                        <td>₹{totalItem.toFixed(2)}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <th colSpan="4" className="text-end">Subtotal:</th>
-                                <td>₹{(actualTotal).toFixed(2)}</td>
-                            </tr>
-                            {actualTotal+shippingCharge-total  > 0 && (
-                                <tr className="discount-summary text-danger">
-                                    <th colSpan="4" className="text-end">Total Discount:</th>
-                                    <td>-₹{(actualTotal+shippingCharge-total).toFixed(2)}</td>
-                                </tr>
-                            )}
-                            <tr>
-                                <th colSpan="4" className="text-end">Shipping Charge:</th>
-                                <td>₹{shippingCharge.toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <th colSpan="4" className="text-end">Total:</th>
-                                <td>₹{total.toFixed(2)}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+          <h1>View Order</h1>
+          <ol className="breadcrumb mb-0">
+            <li className="breadcrumb-item">
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li className="breadcrumb-item">
+              <Link to="/admin/orders">Orders</Link>
+            </li>
+            <li className="breadcrumb-item active">View Order</li>
+          </ol>
         </div>
-    );
+      </div>
+
+      {/* Order Details */}
+      <Card title="Order Details" style={{ marginBottom: 24 }}>
+        <Descriptions column={1} bordered>
+          <Descriptions.Item label="Order ID">{order._id}</Descriptions.Item>
+          <Descriptions.Item label="Status">
+            {order.orderStatus}
+          </Descriptions.Item>
+          <Descriptions.Item label="Order Date">
+            {new Date(order.orderDate).toLocaleDateString()}
+          </Descriptions.Item>
+          <Descriptions.Item label="Payment Mode">
+            {order.paymentMode}
+          </Descriptions.Item>
+          <Descriptions.Item label="Payment Status">
+            {order.paymentStatus}
+          </Descriptions.Item>
+        </Descriptions>
+      </Card>
+
+      <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
+        {/* Shipping Address */}
+        <Card title="Shipping Address" style={{ flex: 1, minWidth: 300 }}>
+          <Descriptions column={1} bordered>
+            <Descriptions.Item label="Name">
+              {order.delAddressId.fullName}
+            </Descriptions.Item>
+            <Descriptions.Item label="Address">
+              {order.delAddressId.address}
+            </Descriptions.Item>
+            <Descriptions.Item label="City">
+              {order.delAddressId.city}
+            </Descriptions.Item>
+            <Descriptions.Item label="State">
+              {order.delAddressId.state}
+            </Descriptions.Item>
+            <Descriptions.Item label="Zip Code">
+              {order.delAddressId.pincode}
+            </Descriptions.Item>
+            <Descriptions.Item label="Phone">
+              {order.delAddressId.phone}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+
+        {/* User Information */}
+        <Card title="User Information" style={{ flex: 1, minWidth: 300 }}>
+          <Descriptions column={1} bordered>
+            <Descriptions.Item label="Name">
+              {order.userId.firstName} {order.userId.lastName}
+            </Descriptions.Item>
+            <Descriptions.Item label="Email">
+              {order.userId.email}
+            </Descriptions.Item>
+            <Descriptions.Item label="Phone">
+              {order.userId.mobile}
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
+      </div>
+
+      {/* Ordered Items */}
+      <Card title="Ordered Items" style={{ marginTop: 24 }}>
+        <Table
+          columns={columns}
+          dataSource={products}
+          pagination={false}
+          rowKey={(record) => record.productId._id}
+          footer={() => (
+            <>
+              <div style={{ textAlign: "right", marginTop: 12 }}>
+                <div>Subtotal: ₹{actualTotal.toFixed(2)}</div>
+                {actualTotal + shippingCharge - total > 0 && (
+                  <div style={{ color: "red" }}>
+                    Total Discount: -₹
+                    {(actualTotal + shippingCharge - total).toFixed(2)}
+                  </div>
+                )}
+                <div>Shipping Charge: ₹{shippingCharge.toFixed(2)}</div>
+                <Divider />
+                <div>
+                  <strong>Total: ₹{total.toFixed(2)}</strong>
+                </div>
+              </div>
+            </>
+          )}
+        />
+      </Card>
+    </div>
+  );
 };
 
 export default ViewOrder;

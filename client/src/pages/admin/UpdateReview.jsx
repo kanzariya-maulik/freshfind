@@ -1,82 +1,51 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { toast } from "react-toastify";
+import { Form, Input, Button, Select, message, Card } from "antd";
 import axios from "axios";
 
+const { TextArea } = Input;
+
 const UpdateReview = () => {
-  const [formData, setFormData] = useState({
-    productid: "",
-    rname: "",
-    rating: "",
-    review: "",
-  });
-  const [errors, setErrors] = useState({});
-  const { id } = useParams();  // Get id from the URL
-  const navigate = useNavigate();  // Hook to navigate to different pages
+  const [form] = Form.useForm();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [productName, setProductName] = useState("");
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
-    // Fetch review data from backend
     const fetchReview = async () => {
       try {
-        const response = await axios.get(`http://localhost:8000/reviews/${id}`);
-        const reviewData = response.data;
+        const res = await axios.get(`http://localhost:8000/reviews/${id}`);
+        const review = res.data;
 
-        // Set fetched review data to form fields
-        setFormData({
-          productid: reviewData.productId.productName,  // Set the product name
-          rname: `${reviewData.userId.firstName} ${reviewData.userId.lastName}`, // Set the user name
-          rating: reviewData.rating,
-          review: reviewData.review,
+        setProductName(review.productId.productName);
+        setUserName(`${review.userId.firstName} ${review.userId.lastName}`);
+
+        form.setFieldsValue({
+          rating: review.rating,
+          review: review.review,
         });
       } catch (err) {
-        console.error("Error fetching review:", err);
-        toast.error("Error fetching review data.");
+        console.error(err);
+        message.error("Failed to load review.");
       }
     };
 
     fetchReview();
-  }, [id]);  // Dependency on id, so it fetches data whenever id changes
+  }, [id, form]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    // Validate field
-    const error = validateField(name, value);
-    setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-  };
-
-  const validateField = (name, value) => {
-    if (name === "review") {
-      if (!value || value.trim() === "") return "Review is required.";
-      if (value.length < 10) return "Review must be at least 10 characters long.";
-      if (value.length > 500) return "Review cannot exceed 500 characters.";
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    let newErrors = {};
-    newErrors.review = validateField("review", formData.review);
-    newErrors.rating = formData.rating ? null : "Rating is required.";
-    setErrors(newErrors);
-
-    if (!newErrors.review && !newErrors.rating) {
-      try {
-        // Send update request to the backend
-        const updatedReview = await axios.put(
-          `http://localhost:8000/reviews/${id}`,
-          formData
-        );
-        
-        // If update is successful, show toast and redirect
-        toast.success("Review updated successfully!");
-        navigate("/admin/reviews");  // Redirect to reviews page
-      } catch (err) {
-        console.error("Error updating review:", err);
-        toast.error("Error updating review.");
-      }
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      await axios.put(`http://localhost:8000/reviews/${id}`, values);
+      message.success("Review updated successfully!");
+      navigate("/admin/reviews");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to update review.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,74 +61,55 @@ const UpdateReview = () => {
         </li>
         <li className="breadcrumb-item active">Update Review</li>
       </ol>
-      <div className="card">
-        <div className="card-body">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label">Product</label>
-              <input
-                type="text"
-                className="form-control"
-                value={formData.productid}
-                disabled
-              />
-            </div>
 
-            <div className="mb-3">
-              <label className="form-label">User</label>
-              <input
-                type="text"
-                className="form-control"
-                value={formData.rname}
-                disabled
-              />
-            </div>
+      <Card>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+          initialValues={{ rating: "", review: "" }}
+        >
+          <Form.Item label="Product">
+            <Input value={productName} disabled />
+          </Form.Item>
 
-            <div className="mb-3">
-              <label htmlFor="rating" className="form-label">
-                Rating
-              </label>
-              <select
-                className="form-select"
-                id="rating"
-                name="rating"
-                value={formData.rating}
-                onChange={handleChange}
-              >
-                <option value="" disabled>
-                  Select a rating
-                </option>
-                <option value="1">1 Star</option>
-                <option value="2">2 Stars</option>
-                <option value="3">3 Stars</option>
-                <option value="4">4 Stars</option>
-                <option value="5">5 Stars</option>
-              </select>
-              {errors.rating && <div className="text-danger">{errors.rating}</div>}
-            </div>
+          <Form.Item label="User">
+            <Input value={userName} disabled />
+          </Form.Item>
 
-            <div className="mb-3">
-              <label htmlFor="review" className="form-label">
-                Review
-              </label>
-              <textarea
-                className="form-control"
-                id="review"
-                name="review"
-                rows="3"
-                value={formData.review}
-                onChange={handleChange}
-                placeholder="Enter review"
-              ></textarea>
-              {errors.review && <div className="text-danger">{errors.review}</div>}
-            </div>
+          <Form.Item
+            name="rating"
+            label="Rating"
+            rules={[{ required: true, message: "Please select a rating." }]}
+          >
+            <Select placeholder="Select a rating">
+              {[1, 2, 3, 4, 5].map((num) => (
+                <Select.Option key={num} value={num}>
+                  {num} Star{num > 1 ? "s" : ""}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
 
-            <button type="submit" className="btn btn-primary">
+          <Form.Item
+            name="review"
+            label="Review"
+            rules={[
+              { required: true, message: "Review is required." },
+              { min: 10, message: "Review must be at least 10 characters." },
+              { max: 500, message: "Review cannot exceed 500 characters." },
+            ]}
+          >
+            <TextArea rows={4} placeholder="Enter your review" />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
               Update Review
-            </button>
-          </form>
-        </div>
-      </div>
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
     </div>
   );
 };

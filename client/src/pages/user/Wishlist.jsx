@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Spin, Typography } from "antd";
 import WishlistTable from "../../components/user/WishlistTable";
+
+const { Paragraph, Title } = Typography;
 
 const Wishlist = () => {
   const [userId, setUserId] = useState(null);
@@ -17,10 +20,20 @@ const Wishlist = () => {
 
   return (
     <div className="container cart-table">
-      <p className="my-5">
-        <Link to="/" className="text-decoration-none dim link">Home /</Link> Wishlist
-      </p>
-      {userId ? <WishlistTable userId={userId} /> : <p>Loading...</p>}
+      <Paragraph className="my-4">
+        <Link to="/" className="dim link">
+          Home /
+        </Link>{" "}
+        Wishlist
+      </Paragraph>
+
+      {userId ? (
+        <WishlistTable userId={userId} />
+      ) : (
+        <div className="text-center my-5">
+          <Spin size="large" tip="Loading your wishlist..." />
+        </div>
+      )}
     </div>
   );
 };

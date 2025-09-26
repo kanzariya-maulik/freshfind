@@ -1,56 +1,68 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import { Typography, Spin, Alert, Card } from "antd";
+
+const { Title, Paragraph } = Typography;
 
 const About = () => {
-  const [content, setContent] = useState(""); // State to store the fetched content
-  const [loading, setLoading] = useState(true); // State to handle loading state
-  const [error, setError] = useState(null); // State to handle errors
+  const [content, setContent] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Fetch the about page content when the component mounts
   useEffect(() => {
     const fetchAboutPage = async () => {
       try {
         const response = await axios.get("http://localhost:8000/about-page");
         if (response.data && response.data.data) {
-          setContent(response.data.data.content); // Set content from the API response
+          setContent(response.data.data.content);
         }
-        setLoading(false); // Set loading to false once the data is fetched
       } catch (err) {
         setError("Failed to load about page content.");
-        setLoading(false); // Set loading to false even if there is an error
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchAboutPage(); // Call the function to fetch data
-  }, []); // Empty dependency array to run once when the component mounts
+    fetchAboutPage();
+  }, []);
 
   if (loading) {
-    return <div>Loading...</div>; // Display loading message while content is being fetched
+    return (
+      <div className="text-center" style={{ padding: "50px 0" }}>
+        <Spin size="large" tip="Loading..." />
+      </div>
+    );
   }
 
   if (error) {
-    return <div>{error}</div>; // Display error message if something goes wrong
+    return (
+      <div className="text-center" style={{ padding: "50px 0" }}>
+        <Alert message={error} type="error" showIcon />
+      </div>
+    );
   }
 
   return (
-    <div className="container sitemap mt-5">
-      <p>
+    <div className="container mt-5">
+      <div className="sitemap mb-3">
         <Link to="/" className="text-decoration-none dim link">
           Home /
         </Link>{" "}
         About
-      </p>
-      <div className="about row justify-content-center">
-        <div className="col-lg-12">
-          <h2 className="mb-4">About Us</h2>
-          {/* Render the dynamic content here */}
-          <div
-            className="about-content"
-            dangerouslySetInnerHTML={{ __html: content }}
-          />
-        </div>
       </div>
+
+      <Card bordered={false} style={{ padding: "30px" }}>
+        <Title level={2} className="mb-4">
+          About Us
+        </Title>
+        <Paragraph>
+          <div
+            dangerouslySetInnerHTML={{ __html: content }}
+            style={{ lineHeight: "1.8", fontSize: "16px" }}
+          />
+        </Paragraph>
+      </Card>
     </div>
   );
 };

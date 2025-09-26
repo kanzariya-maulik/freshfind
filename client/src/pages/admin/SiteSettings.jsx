@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
+import { Card, Form, Input, Button, message, Typography } from "antd";
+
+const { TextArea } = Input;
+const { Title } = Typography;
 
 const SiteSettings = () => {
-  // State for "About Page Content"
   const [aboutContent, setAboutContent] = useState("");
-  const [aboutErrors, setAboutErrors] = useState({});
-  
-  // State for "Contact Info"
   const [contactEmail, setContactEmail] = useState("");
   const [contactNumber, setContactNumber] = useState("");
-  const [contactErrors, setContactErrors] = useState({});
-  
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const BACKEND_URL = "http://localhost:8000"; // Replace with your actual backend URL
+  const BACKEND_URL = "http://localhost:8000"; // Replace with your backend URL
 
   useEffect(() => {
     fetchAboutPage();
@@ -23,110 +20,75 @@ const SiteSettings = () => {
 
   const fetchAboutPage = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/about-page`);
-      if (!response.ok) throw new Error("Failed to fetch about page");
-      const data = await response.json();
-
-      if (data && data.data.content) {
-        setAboutContent(data.data.content);
-      }
-    } catch (error) {
-      console.error(error);
+      const res = await fetch(`${BACKEND_URL}/about-page`);
+      if (!res.ok) throw new Error("Failed to fetch about page");
+      const data = await res.json();
+      setAboutContent(data?.data?.content || "");
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const fetchContactPage = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/contact`);
-      if (!response.ok) throw new Error("Failed to fetch contact page");
-      const data = await response.json();
-      if (data) {
-        setContactEmail(data.contactEmail || "");
-        setContactNumber(data.contactNumber || "");
-      }
-    } catch (error) {
-      console.error(error);
+      const res = await fetch(`${BACKEND_URL}/contact`);
+      if (!res.ok) throw new Error("Failed to fetch contact info");
+      const data = await res.json();
+      setContactEmail(data.contactEmail || "");
+      setContactNumber(data.contactNumber || "");
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  // Validation for About Page Content
-  const validateAboutContent = (value) => {
-    let error = "";
-    if (!value.trim()) {
-      error = "About page content cannot be empty!";
+  const handleAboutSubmit = async () => {
+    if (!aboutContent.trim()) {
+      message.error("About page content cannot be empty!");
+      return;
     }
-    setAboutErrors((prevErrors) => ({ ...prevErrors, aboutContent: error }));
-    return error === "";
-  };
 
-  // Validation for Contact Info
-  const validateContactInfo = (field, value) => {
-    let error = "";
-    if (field === "contactEmail") {
-      if (!value.trim()) {
-        error = "Email is required!";
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Invalid email format!";
-      }
-    } else if (field === "contactNumber") {
-      if (!value.trim()) {
-        error = "Contact number is required!";
-      } else if (!/^\d{10}$/.test(value)) {
-        error = "Contact number must be 10 digits!";
-      }
-    }
-    setContactErrors((prevErrors) => ({ ...prevErrors, [field]: error }));
-    return error === "";
-  };
-
-  const handleAboutSubmit = async (e) => {
-    e.preventDefault();
-    if (validateAboutContent(aboutContent)) {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${BACKEND_URL}/about-page`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ content: aboutContent }),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to update about page content");
-        }
-        Swal.fire("Success", "About page content updated successfully!", "success");
-      } catch (error) {
-        Swal.fire("Error", error.message, "error");
-      } finally {
-        setIsLoading(false);
-      }
+    setLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/about-page`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: aboutContent }),
+      });
+      if (!res.ok) throw new Error("Failed to update about page");
+      message.success("About page content updated successfully!");
+    } catch (err) {
+      message.error(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleContactSubmit = async (e) => {
-    e.preventDefault();
-    const isEmailValid = validateContactInfo("contactEmail", contactEmail);
-    const isNumberValid = validateContactInfo("contactNumber", contactNumber);
+  const handleContactSubmit = async () => {
+    if (
+      !contactEmail.trim() ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)
+    ) {
+      message.error("Invalid email!");
+      return;
+    }
+    if (!contactNumber.trim() || !/^\d{10}$/.test(contactNumber)) {
+      message.error("Contact number must be 10 digits!");
+      return;
+    }
 
-    if (isEmailValid && isNumberValid) {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${BACKEND_URL}/contact`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ contactEmail, contactNumber }),
-        });
-        if (!response.ok) {
-          throw new Error("Failed to update contact info");
-        }
-        Swal.fire("Success", "Contact info updated successfully!", "success");
-      } catch (error) {
-        Swal.fire("Error", error.message, "error");
-      } finally {
-        setIsLoading(false);
-      }
+    setLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactEmail, contactNumber }),
+      });
+      if (!res.ok) throw new Error("Failed to update contact info");
+      message.success("Contact info updated successfully!");
+    } catch (err) {
+      message.error(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -134,7 +96,7 @@ const SiteSettings = () => {
     <div>
       <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
         <div>
-          <h1>Site Settings</h1>
+          <Title level={2}>Site Settings</Title>
           <ol className="breadcrumb mb-0">
             <li className="breadcrumb-item">
               <Link to="/admin">Dashboard</Link>
@@ -144,74 +106,46 @@ const SiteSettings = () => {
         </div>
       </div>
 
-      {/* About Page Content Form */}
-      <div className="card mb-4">
-        <div className="card-header">
-          <h4>Update About Page Content</h4>
-        </div>
-        <div className="card-body">
-          <form onSubmit={handleAboutSubmit}>
-            <div className="mb-3">
-              <label className="form-label">About Page Content</label>
-              <textarea
-                className="form-control"
-                rows="5"
-                value={aboutContent}
-                onChange={(e) => {
-                  setAboutContent(e.target.value);
-                  validateAboutContent(e.target.value);
-                }}
-              />
-              {aboutErrors.aboutContent && <small className="text-danger">{aboutErrors.aboutContent}</small>}
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update About Page"}
-            </button>
-          </form>
-        </div>
-      </div>
+      <Card title="Update About Page Content" className="mb-4">
+        <Form layout="vertical" onFinish={handleAboutSubmit}>
+          <Form.Item label="About Page Content" required>
+            <TextArea
+              rows={5}
+              value={aboutContent}
+              onChange={(e) => setAboutContent(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Update About Page
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
 
-      {/* Contact Info Form */}
-      <div className="card mb-4">
-        <div className="card-header">
-          <h4>Update Contact Page Info</h4>
-        </div>
-        <div className="card-body">
-          <form onSubmit={handleContactSubmit}>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Contact Email</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={contactEmail}
-                  onChange={(e) => {
-                    setContactEmail(e.target.value);
-                    validateContactInfo("contactEmail", e.target.value);
-                  }}
-                />
-                {contactErrors.contactEmail && <small className="text-danger">{contactErrors.contactEmail}</small>}
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Contact Number</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  value={contactNumber}
-                  onChange={(e) => {
-                    setContactNumber(e.target.value);
-                    validateContactInfo("contactNumber", e.target.value);
-                  }}
-                />
-                {contactErrors.contactNumber && <small className="text-danger">{contactErrors.contactNumber}</small>}
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Contact Info"}
-            </button>
-          </form>
-        </div>
-      </div>
+      <Card title="Update Contact Page Info">
+        <Form layout="vertical" onFinish={handleContactSubmit}>
+          <Form.Item label="Contact Email" required>
+            <Input
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+            />
+          </Form.Item>
+
+          <Form.Item label="Contact Number" required>
+            <Input
+              value={contactNumber}
+              onChange={(e) => setContactNumber(e.target.value)}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Update Contact Info
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
     </div>
   );
 };

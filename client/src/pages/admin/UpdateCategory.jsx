@@ -1,205 +1,162 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  Typography,
+  Upload,
+  message,
+  Row,
+  Col,
+} from "antd";
+import { UploadOutlined } from "@ant-design/icons";
 import axios from "axios";
 
+const { Title } = Typography;
+
 const UpdateCategory = () => {
-    const { id } = useParams(); // Get the category ID from URL
-    const navigate = useNavigate(); // Used for redirecting after successful update
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [oldImage, setOldImage] = useState("");
 
-    const [formData, setFormData] = useState({
-        categoryName: "",
-        color: "#000000", // Default color (black)
-        image: null, // For image file
-    });
-    const [oldImage, setOldImage] = useState(""); // To store the old image URL
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-
-    // Fetch category details when component mounts or when ID changes
-    useEffect(() => {
-        const fetchCategory = async () => {
-            setLoading(true);
-            try {
-                const response = await axios.get(`http://localhost:8000/categories/${id}`);
-                setFormData({
-                    categoryName: response.data.name,
-                    color: response.data.color,
-                    image: response.data.image,
-                });
-                setOldImage(response.data.image); // Store the old image URL
-            } catch (error) {
-                console.error("Error fetching category:", error);
-                toast.error("Failed to fetch category details.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchCategory();
-    }, [id]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-
-        // Validate field
-        const error = validateField(name, value);
-        setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-    };
-
-    const handleFileChange = (e) => {
-        const { name, files } = e.target;
-        setFormData({ ...formData, [name]: files[0] });
-
-        // Validate file
-        const error = validateField(name, files[0]);
-        setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-    };
-
-    const validateField = (name, value) => {
-        let error = null;
-        if (name === "categoryName") {
-            if (!value.trim()) {
-                error = "Category name is required.";
-            } else if (value.length < 3) {
-                error = "Category name must be at least 3 characters.";
-            } else if (value.length > 50) {
-                error = "Category name cannot exceed 50 characters.";
-            }
-        }
-        if (name === "color" && !value.trim()) {
-            error = "Color is required.";
-        }
-        if (name === "image" && !value) {
-            error = "Image is required.";
-        }
-        return error;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        const formErrors = {};
-        Object.keys(formData).forEach((field) => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
+  useEffect(() => {
+    const fetchCategory = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`http://localhost:8000/categories/${id}`);
+        const data = res.data;
+        form.setFieldsValue({
+          categoryName: data.name,
+          color: data.color,
         });
-
-        if (Object.keys(formErrors).length > 0) {
-            setErrors(formErrors);
-            return;
-        }
-
-        setErrors({});
-        setLoading(true);
-
-        // Prepare form data for backend
-        const updatedCategory = new FormData();
-        updatedCategory.append("name", formData.categoryName);
-        updatedCategory.append("color", formData.color);
-        if (formData.image) {
-            updatedCategory.append("image", formData.image);
-        }
-
-        try {
-            await axios.put(`http://localhost:8000/categories/${id}`, updatedCategory, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
-            toast.success("Category updated successfully!");
-            navigate("/admin/categories"); // Redirect after success
-        } catch (error) {
-            console.error("Error updating category:", error);
-            toast.error("Failed to update category.");
-        } finally {
-            setLoading(false);
-        }
+        setOldImage(data.image);
+      } catch (err) {
+        console.error(err);
+        message.error("Failed to fetch category details");
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchCategory();
+  }, [id, form]);
 
-    return (
-        <div>
-            <h1 className="mt-4">Update Category</h1>
-            <ol className="breadcrumb mb-4">
-                <li className="breadcrumb-item">
-                    <Link to="/admin">Dashboard</Link>
-                </li>
-                <li className="breadcrumb-item">
-                    <Link to="/admin/categories">Categories</Link>
-                </li>
-                <li className="breadcrumb-item active">Update Category</li>
-            </ol>
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("name", values.categoryName);
+      formData.append("color", values.color);
+      if (values.image && values.image.file) {
+        formData.append("image", values.image.file);
+      }
 
-            <div className="card mb-4">
-                <div className="card-body">
-                    <form onSubmit={handleSubmit} encType="multipart/form-data">
-                        <div className="row">
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label htmlFor="categoryName" className="form-label">
-                                        Category Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        id="categoryName"
-                                        name="categoryName"
-                                        value={formData.categoryName}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.categoryName && <div className="text-danger">{errors.categoryName}</div>}
-                                </div>
-                            </div>
+      await axios.put(`http://localhost:8000/categories/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label htmlFor="color" className="form-label">
-                                        Category Color
-                                    </label>
-                                    <input
-                                        type="color"
-                                        className="form-control"
-                                        id="color"
-                                        name="color"
-                                        value={formData.color}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.color && <div className="text-danger">{errors.color}</div>}
-                                </div>
-                            </div>
+      message.success("Category updated successfully!");
+      navigate("/admin/categories");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to update category.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label htmlFor="image" className="form-label">
-                                        Category Image
-                                    </label>
-                                    <input
-                                        type="file"
-                                        className="form-control"
-                                        id="image"
-                                        name="image"
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                    />
-                                    {errors.image && <div className="text-danger">{errors.image}</div>}
-                                    {/* Display the old image if available */}
-                                    {oldImage && (
-                                        <div className="mt-2">
-                                            <img src={oldImage} alt="Old Category" style={{ maxWidth: "150px" }} />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+  const beforeUpload = (file) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("You can only upload image files!");
+    }
+    return isImage || Upload.LIST_IGNORE;
+  };
 
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
-                            {loading ? "Updating..." : "Update Category"}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    );
+  return (
+    <div>
+      <Title level={2} className="mt-4">
+        Update Category
+      </Title>
+
+      <ol className="breadcrumb mb-4">
+        <li className="breadcrumb-item">
+          <Link to="/admin">Dashboard</Link>
+        </li>
+        <li className="breadcrumb-item">
+          <Link to="/admin/categories">Categories</Link>
+        </li>
+        <li className="breadcrumb-item active">Update Category</li>
+      </ol>
+
+      <Card>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Category Name"
+                name="categoryName"
+                rules={[
+                  { required: true, message: "Category name is required" },
+                  {
+                    min: 3,
+                    message: "Category name must be at least 3 characters",
+                  },
+                  {
+                    max: 50,
+                    message: "Category name cannot exceed 50 characters",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter category name" />
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item
+                label="Category Color"
+                name="color"
+                rules={[{ required: true, message: "Color is required" }]}
+              >
+                <Input type="color" />
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item label="Category Image" name="image">
+                <Upload
+                  maxCount={1}
+                  beforeUpload={beforeUpload}
+                  listType="picture"
+                  accept="image/*"
+                >
+                  <Button icon={<UploadOutlined />}>Upload Image</Button>
+                </Upload>
+                {oldImage && (
+                  <div className="mt-2">
+                    <img
+                      src={oldImage}
+                      alt="Old Category"
+                      style={{ maxWidth: "150px" }}
+                    />
+                  </div>
+                )}
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              {loading ? "Updating..." : "Update Category"}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  );
 };
 
 export default UpdateCategory;

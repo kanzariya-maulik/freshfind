@@ -1,78 +1,65 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-const Sidebar = ({isSidebarToggled}) => {
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Layout, Menu } from "antd";
+import {
+  DashboardOutlined,
+  AppstoreOutlined,
+  StarOutlined,
+  ShoppingCartOutlined,
+  TagsOutlined,
+  UserOutlined,
+  GiftOutlined,
+  PictureOutlined,
+  MailOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 
-  
+const { Sider } = Layout;
+
+const Sidebar = ({ isSidebarToggled }) => {
+  const location = useLocation();
+
+  const menuItems = [
+    { key: "/admin", icon: <DashboardOutlined />, label: "Dashboard" },
+    { key: "/admin/products", icon: <AppstoreOutlined />, label: "Products" },
+    { key: "/admin/reviews", icon: <StarOutlined />, label: "Reviews" },
+    { key: "/admin/orders", icon: <ShoppingCartOutlined />, label: "Orders" },
+    { key: "/admin/categories", icon: <TagsOutlined />, label: "Categories" },
+    { key: "/admin/users", icon: <UserOutlined />, label: "Users" },
+    { key: "/admin/offers", icon: <GiftOutlined />, label: "Offers" },
+    { key: "/admin/banners", icon: <PictureOutlined />, label: "Banners" },
+    {
+      key: "/admin/responses",
+      icon: <MailOutlined />,
+      label: "Response Management",
+    },
+    {
+      key: "/admin/site-settings",
+      icon: <SettingOutlined />,
+      label: "Site Settings",
+    },
+  ];
+
   return (
-
-        <div id="layoutSidenav_nav"  className={isSidebarToggled ? "sb-sidenav-toggled" : ""}>
-          <nav className="sb-sidenav accordion sb-sidenav-dark">
-            <div className="sb-sidenav-menu">
-              <div className="nav">
-                <Link className="nav-link" to="/admin">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-tachometer-alt"></i>
-                  </div>
-                  Dashboard
-                </Link>
-                <Link className="nav-link" to="/admin/products">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-box"></i>
-                  </div>
-                  Products
-                </Link>
-                <Link className="nav-link" to="/admin/reviews">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-star"></i>
-                  </div>
-                  Reviews
-                </Link>
-                <Link className="nav-link" to="/admin/orders">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-shopping-cart"></i>
-                  </div>
-                  Orders
-                </Link>
-                <Link className="nav-link" to="/admin/categories">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-tags"></i>
-                  </div>
-                  Categories
-                </Link>
-                <Link className="nav-link" to="/admin/users">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-user"></i>
-                  </div>
-                  Users
-                </Link>
-                <Link className="nav-link" to="/admin/offers">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-gift"></i>
-                  </div>
-                  Offers
-                </Link>
-                <Link className="nav-link" to="/admin/banners">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-image"></i>
-                  </div>
-                  Banners
-                </Link>
-                <Link className="nav-link" to="/admin/responses">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-envelope"></i>
-                  </div>
-                  Response Management
-                </Link>
-                <Link className="nav-link" to="/admin/site-settings">
-                  <div className="sb-nav-link-icon">
-                    <i className="fas fa-gear"></i>
-                  </div>
-                  Site Settings
-                </Link>
-              </div>
-            </div>
-          </nav>
-        </div>
+    <Sider
+      collapsible
+      collapsed={isSidebarToggled}
+      width={250}
+      style={{ background: "#FAFAF9", marginTop: 100 }}
+    >
+      <Menu
+        theme="light"
+        mode="inline"
+        selectedKeys={[location.pathname]}
+        style={{ height: "100%", borderRight: 0 }}
+      >
+        {menuItems.map((item) => (
+          <Menu.Item key={item.key} icon={item.icon}>
+            <Link to={item.key}>{item.label}</Link>
+          </Menu.Item>
+        ))}
+      </Menu>
+    </Sider>
   );
 };
 

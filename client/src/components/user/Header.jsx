@@ -1,159 +1,122 @@
-import React, { useState, useEffect } from "react";
-import { NavLink, Link, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
-import { useAuth } from "../../contexts/AuthContext"; // ✅ Import context
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  Layout,
+  Menu,
+  Dropdown,
+  Badge,
+  Avatar,
+  Input,
+  Button,
+  Space,
+} from "antd";
+import {
+  ShoppingCartOutlined,
+  HeartOutlined,
+  UserOutlined,
+  SearchOutlined,
+} from "@ant-design/icons";
+import { Typography } from "antd";
+
+const { Text } = Typography;
+
+const { Header: AntHeader } = Layout;
 
 const Header = () => {
-	const { isLoggedIn, logout, user, cartCount, wishlistCount, updateCartCount, updateWishlistCount } = useAuth(); // ✅ Grab new state and methods from context
-	const [query, setQuery] = useState("");
-	const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-	const navigate = useNavigate();
-  const { searchQuery, setSearchQuery } = useAuth();
-	useEffect(() => {
-		const navbarToggler = document.querySelector(".navbar-toggler");
-		const navbarCollapse = document.querySelector(".navbar-collapse");
+  const {
+    isLoggedIn,
+    logout,
+    user,
+    cartCount,
+    wishlistCount,
+    searchQuery,
+    setSearchQuery,
+  } = useAuth();
+  const navigate = useNavigate();
 
-		if (navbarToggler && navbarCollapse) {
-			const toggleCollapse = () => setIsNavCollapsed(!isNavCollapsed);
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
 
-			const handleClickOutside = (event) => {
-				if (
-					!navbarToggler.contains(event.target) &&
-					!navbarCollapse.contains(event.target) &&
-					!isNavCollapsed
-				) {
-					setIsNavCollapsed(true);
-				}
-			};
+  const validateSearch = (e) => {
+    e.preventDefault();
+    navigate("/shop");
+  };
 
-			navbarToggler.addEventListener("click", toggleCollapse);
-			document.addEventListener("click", handleClickOutside);
+  const profileMenu = (
+    <Menu>
+      <Menu.Item key="profile">
+        <Link to="/account">My Profile</Link>
+      </Menu.Item>
+      <Menu.Item key="orders">
+        <Link to="/order-history">Your Orders</Link>
+      </Menu.Item>
+      <Menu.Item key="logout">
+        <Button type="text" onClick={handleLogout}>
+          Log out
+        </Button>
+      </Menu.Item>
+    </Menu>
+  );
 
-			return () => {
-				navbarToggler.removeEventListener("click", toggleCollapse);
-				document.removeEventListener("click", handleClickOutside);
-			};
-		}
-	}, [isNavCollapsed]);
+  return (
+    <AntHeader style={{ background: "#FAFAF9", padding: "0 2rem" }}>
+      <div className="d-flex justify-content-between align-items-center">
+        <Text className="logo fs-1 fw-bold" style={{ color: "#FF8C00" }} to="/">
+          F<Text style={{ fontSize: "1.75rem", color: "#FF8C00" }}>resh</Text> F
+          <Text style={{ fontSize: "1.75rem", color: "#FF8C00" }}>ind</Text>
+        </Text>
 
-	const validateSearch = (e) => {
-		e.preventDefault();
-		navigate("/shop");
-	};
+        <Space align="center">
+          <form onSubmit={validateSearch}>
+            <Input
+              placeholder="Search for items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: 250 }}
+              suffix={<SearchOutlined onClick={validateSearch} />}
+            />
+          </form>
 
-	const handleLogout = () => {
-		logout(); // ✅ Logout from context
-		toast.success("You have been logged out successfully!");
-		navigate("/");
-	};
-    
+          {isLoggedIn ? (
+            <Space size="middle">
+              <Dropdown overlay={profileMenu} placement="bottomRight">
+                <Space style={{ cursor: "pointer" }}>
+                  <Avatar
+                    src={user?.profilePicture || null}
+                    icon={!user?.profilePicture && <UserOutlined />}
+                  />
+                  {user?.firstName || "User"}
+                </Space>
+              </Dropdown>
 
-	return (
-		<nav id="navibar" className="navbar navbar-expand-lg navbar-light sticky-top container-fluid">
-			<div className="container-fluid">
-				<Link className="logo navbar-brand fs-1 fw-bold" to="/">PureBite</Link>
-				<button
-					className="navbar-toggler"
-					type="button"
-					data-bs-toggle="collapse"
-					data-bs-target="#navbarContent"
-					aria-controls="navbarContent"
-					aria-expanded={!isNavCollapsed}
-					aria-label="Toggle navigation"
-				>
-					<span className="navbar-toggler-icon"></span>
-				</button>
-				<div className={`collapse navbar-collapse text-center ${!isNavCollapsed ? "show" : ""}`} id="navbarContent">
-					<ul className="navbar-nav me-auto mb-2 mb-lg-0 w-100 justify-content-center">
-						<li className="nav-item">
-							<NavLink className="nav-link" to="/">Home</NavLink>
-						</li>
-						<li className="nav-item">
-							<NavLink className="nav-link" to="/shop">Shop</NavLink>
-						</li>
-						<li className="nav-item">
-							<NavLink className="nav-link" to="/contact">Contact</NavLink>
-						</li>
-						<li className="nav-item">
-							<NavLink className="nav-link" to="/about">About</NavLink>
-						</li>
-					</ul>
+              <Link to="/wishlist">
+                <Badge count={wishlistCount} offset={[0, 0]}>
+                  <HeartOutlined style={{ fontSize: "20px" }} />
+                </Badge>
+              </Link>
 
-					<div className="d-flex flex-lg-row flex-column align-items-center w-100 mt-3 mt-lg-0">
-						<form className="d-flex mb-3 mb-lg-0 me-lg-3 justify-content-center" onSubmit={validateSearch}>
-							<input
-								className="search-input flex-sm-grow-0 flex-grow-1"
-								type="search"
-								placeholder="Search for items..."
-								value={searchQuery}
-								 onChange={(e) => {setSearchQuery(e.target.value);}}
-							/>
-							<button className="primary-btn search-button">
-								<i className="fa fa-search" aria-hidden="true"></i>
-							</button>
-						</form>
-
-						{isLoggedIn ? (
-							<div className="d-flex align-items-center justify-content-center mt-3 mt-lg-0">
-								<div className="dropdown profile-menu me-3">
-									<a
-										className="nav-link dropdown-toggle d-flex align-items-center justify-content-center"
-										href="#"
-										role="button"
-										data-bs-toggle="dropdown"
-										aria-expanded="false"
-									>
-										<img
-											src={user?.profilePicture || "img/users/default-img.png"} // Dynamically show profile picture
-											alt="User"
-											style={{
-												width: "35px",
-												height: "35px",
-												borderRadius: "50%",
-												marginRight: "8px",
-											}}
-										/>
-										{user?.firstName || "User"} {/* Dynamically show user's name */}
-									</a>
-									<ul className="dropdown-menu dropdown-menu-end">
-										<li>
-											<NavLink className="dropdown-item" to="/account">My Profile</NavLink>
-										</li>
-										<li>
-											<NavLink className="dropdown-item" to="/order-history">Your Orders</NavLink>
-										</li>
-										<li>
-											<button className="dropdown-item" onClick={handleLogout}>Log out</button>
-										</li>
-									</ul>
-								</div>
-
-								<div className="d-flex">
-									<Link to="/wishlist" className="icon-link me-2">
-										<div className="icon position-relative">
-											<i className="fa-regular fa-heart"></i>
-											<span className="badge-class">{wishlistCount}</span> {/* Dynamically show wishlist count from context */}
-										</div>
-									</Link>
-									<Link to="/cart" className="icon-link">
-										<div className="icon position-relative">
-											<i className="fa-solid fa-cart-shopping"></i>
-											<span className="badge-class">{cartCount}</span> {/* Dynamically show cart count from context */}
-										</div>
-									</Link>
-								</div>
-							</div>
-						) : (
-							<div className="d-flex">
-								<Link className="header-btn me-2" to="/register">Register</Link>
-								<Link className="header-btn" to="/login">Login</Link>
-							</div>
-						)}
-					</div>
-				</div>
-			</div>
-		</nav>
-	);
+              <Link to="/cart">
+                <Badge count={cartCount} offset={[0, 0]}>
+                  <ShoppingCartOutlined style={{ fontSize: "20px" }} />
+                </Badge>
+              </Link>
+            </Space>
+          ) : (
+            <Space>
+              <Link to="/register">
+                <Button type="primary">Register</Button>
+              </Link>
+              <Link to="/login">
+                <Button>Login</Button>
+              </Link>
+            </Space>
+          )}
+        </Space>
+      </div>
+    </AntHeader>
+  );
 };
 
 export default Header;

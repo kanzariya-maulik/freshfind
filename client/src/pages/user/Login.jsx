@@ -1,140 +1,99 @@
 import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
-import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { useAuth } from "../../contexts/AuthContext"; // Adjust path if needed
+import { Form, Input, Button, Typography, Spin } from "antd";
+import { useAuth } from "../../contexts/AuthContext";
+
+const { Title, Text } = Typography;
 
 const Login = () => {
-    const navigate = useNavigate();
-    const { login } = useAuth(); // Destructure login method from useAuth
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [loading, setLoading] = useState(false);
 
-    const [formData, setFormData] = useState({
-        email: "",
-        password: ""
-    });
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-
-        const error = validateField(name, value);
-        setErrors(prevErrors => ({ ...prevErrors, [name]: error }));
-    };
-
-    const validateField = (name, value) => {
-        let error = null;
-        if (!value.trim()) {
-            error = name === "email" ? "Email is required" : "Password is required";
-        } else if (name === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-            error = "Enter a valid email address";
-        } else if (name === "password" && value.length < 6) {
-            error = "Password must be at least 6 characters long";
-        }
-        return error;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        const formErrors = {};
-        Object.keys(formData).forEach(field => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
-        });
-
-        if (Object.values(formErrors).some(error => error)) {
-            setErrors(formErrors);
-            return;
-        }
-
-try {
+  const handleFinish = async (values) => {
     setLoading(true);
-    const res = await axios.post("http://localhost:8000/users/login", formData);
+    try {
+      const res = await axios.post("http://localhost:8000/users/login", values);
 
-    toast.success("Login successful!");
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("user", JSON.stringify(res.data.user));
-    console.log(res.data.user);
+      toast.success("Login successful!");
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-    login(res.data.token, res.data.user); // ✅ Update context state
+      login(res.data.token, res.data.user);
 
-    if (res.data.user.role === "admin") {
-        navigate("/admin");
-    } else {
-        navigate("/");
-    }
-} catch (error) {
-    // 🛑 Extract meaningful error message from response
-    const backendMessage =
+      if (res.data.user.role === "admin") navigate("/admin");
+      else navigate("/");
+    } catch (error) {
+      const backendMessage =
         error.response?.data?.message ||
         error.response?.data?.error ||
         "Login failed. Please try again.";
 
-    toast.error(backendMessage);
-} finally {
-    setLoading(false);
-}
+      toast.error(backendMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    };
+  return (
+    <div className="container">
+      <div
+        className="row justify-content-center align-items-center"
+        style={{ minHeight: "80vh" }}
+      >
+        <div className="col-md-6">
+          <div className="login-form p-4 shadow-sm rounded">
+            <Title level={2} className="text-center mb-4">
+              Log in to Fresh Find
+            </Title>
+            <Text className="text-center mb-4 d-block">
+              Enter your details below
+            </Text>
 
-    return (
-        <div className="container">
-            <div className="row p-3 g-3 mt-4 justify-content-center h-100 align-items-center">
-                <div className="col-md-6">
-                    <div className="login-form d-flex flex-column justify-content-center h-100 align-items-center">
-                        <div className="mb-3 w-75">
-                            <h2 className="mb-3">Log in to PureBite</h2>
-                            <div className="mb-4 font-black">Enter your details below</div>
-                            <form id="loginForm" onSubmit={handleSubmit}>
-                                <input
-                                    type="text"
-                                    id="email"
-                                    name="email"
-                                    className="w-100 p-2"
-                                    placeholder="Email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                    disabled={loading}
-                                />
-                                <p className="error mb-4">{errors.email}</p>
+            <Form
+              name="loginForm"
+              layout="vertical"
+              onFinish={handleFinish}
+              disabled={loading}
+            >
+              <Form.Item
+                label="Email"
+                name="email"
+                rules={[
+                  { required: true, message: "Email is required" },
+                  { type: "email", message: "Enter a valid email" },
+                ]}
+              >
+                <Input placeholder="Email" />
+              </Form.Item>
 
-                                <input
-                                    type="password"
-                                    id="password"
-                                    name="password"
-                                    className="w-100 p-2"
-                                    placeholder="Password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                    disabled={loading}
-                                />
-                                <p className="error mb-4">{errors.password}</p>
+              <Form.Item
+                label="Password"
+                name="password"
+                rules={[
+                  { required: true, message: "Password is required" },
+                  { min: 6, message: "Password must be at least 6 characters" },
+                ]}
+              >
+                <Input.Password placeholder="Password" />
+              </Form.Item>
 
-                                <div className="d-flex w-100 align-items-center">
-                                    <button type="submit" className="btn-msg" disabled={loading}>
-                                        {loading ? "Logging in..." : "Log in"}
-                                    </button>
-                                    <div className="highlight justify-self-end ms-auto">
-                                        <Link to="/forgot-password" className="text-decoration-none link highlight">
-                                            Forgot password?
-                                        </Link>
-                                    </div>
-                                </div>
-
-                                {loading && (
-                                    <div className="text-center mt-3">
-                                        <span className="spinner-border text-primary" role="status"></span>
-                                    </div>
-                                )}
-                            </form>
-                        </div>
-                    </div>
+              <Form.Item>
+                <div className="d-flex justify-content-between align-items-center">
+                  <Button type="primary" htmlType="submit" disabled={loading}>
+                    {loading ? <Spin size="small" /> : "Log in"}
+                  </Button>
+                  <Link to="/forgot-password">Forgot password?</Link>
                 </div>
-            </div>
+              </Form.Item>
+            </Form>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default Login;

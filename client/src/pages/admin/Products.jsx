@@ -1,164 +1,166 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Table,
+  Button,
+  Space,
+  Popconfirm,
+  message,
+  Input,
+  Card,
+  Tag,
+} from "antd";
+import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import axios from "axios";
-import Swal from "sweetalert2";
-import DataTable from "react-data-table-component";
 
 const ProductList = () => {
-    // const customStyles = {
-    //     rows: {
-    //         style: {
-    //             fontSize: '13px', // Increase row font size
-    //         },
-    //     },
-    //     headCells: {
-    //         style: {
-    //             fontSize: '16px', // Increase header font size
-    //             fontWeight: 'bold',
-    //         },
-    //     },
-    //     cells: {
-    //         style: {
-    //             fontSize: '13px', // Increase cell font size
-    //         },
-    //     },
-    // };
-    const [products, setProducts] = useState([]);
-    const [filterText, setFilterText] = useState("");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const res = await axios.get("http://localhost:8000/products");
-                setProducts(res.data);
-            } catch (err) {
-                console.error("Failed to fetch products:", err);
-            }
-        };
-        fetchProducts();
-    }, []);
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8000/products");
+      setProducts(res.data);
+    } catch (err) {
+      message.error("Failed to fetch products");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleDelete = (productId) => {
-        Swal.fire({
-            title: "Are you sure?",
-            text: "You won't be able to revert this!",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#d33",
-            cancelButtonColor: "#3085d6",
-            confirmButtonText: "Yes, delete it!",
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await axios.delete(`http://localhost:8000/products/${productId}`);
-                    setProducts(products.filter(p => p._id !== productId));
-                    Swal.fire("Deleted!", "Product has been deleted.", "success");
-                } catch (err) {
-                    Swal.fire("Error", "Failed to delete product", "error");
-                }
-            }
-        });
-    };
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
-   const columns = [
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:8000/products/${id}`);
+      message.success("Product deleted successfully");
+      fetchProducts();
+    } catch (err) {
+      message.error("Failed to delete product");
+    }
+  };
+
+  const columns = [
     {
-        name: "Product ID",
-        selector: row => row._id,
-        sortable: true,
-        width: "15%",
+      title: "Product ID",
+      dataIndex: "_id",
+      key: "_id",
     },
     {
-        name: "Product",
-        selector: row => row.productName,
-        cell: row => (
-            <div className="d-flex align-items-center">
-                <img src={row.productImage} alt={row.productName} style={{ width: 50, height: 50, objectFit: "cover" }} />
-                <span className="ms-2">{row.productName}</span>
-            </div>
-        ),
-        sortable: true,
-        width: "25%",
-    },
-    {
-        name: "Price (₹)",
-        selector: row => row.salePrice,
-        sortable: true,
-        width: "10%",
-    },
-    {
-        name: "Discount(%)",
-        selector: row => row.discount,
-        sortable: true,
-        width: "12%",
-    },
-    {
-        name: "Stock",
-        selector: row => row.stock,
-        width: "8%",
-    },
-    {
-        name: "Category",
-        selector: row => row.categoryId?.name || "N/A",
-        sortable: true,
-        width: "15%",
-    },
-    {
-        name: "Actions",
-        cell: row => (
-            <div className="d-flex flex-nowrap">
-                {/* <Link className="btn btn-info btn-sm me-1" to={`/admin/view-product/${row._id}`}>View</Link> */}
-                <Link className="btn btn-success btn-sm me-1" to={`/admin/update-product/${row._id}`}>Edit</Link>
-                <button className="btn btn-danger btn-sm" onClick={() => handleDelete(row._id)}>Delete</button>
-            </div>
-        ),
-        width: "15%",
-    },
-];
-
-    const filteredItems = products.filter(
-        item =>
-            Object.values(item)
-                .join(" ")
-                .toLowerCase()
-                .includes(filterText.toLowerCase())
-    );
-
-    return (
-        <div>
-            <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-                <div>
-                    <h1>Products</h1>
-                    <ol className="breadcrumb mb-0">
-                        <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                        <li className="breadcrumb-item active">Products</li>
-                    </ol>
-                </div>
-                <Link className="btn btn-primary" to="/admin/add-product">Add Product</Link>
-            </div>
-
-            <div className="mb-3">
-                <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search products..."
-                    value={filterText}
-                    onChange={(e) => setFilterText(e.target.value)}
-                />
-            </div>
-
-            <DataTable
-                columns={columns}
-                data={filteredItems}
-                pagination
-                highlightOnHover
-                striped
-                responsive
-                persistTableHead
-                noDataComponent="There are no products to display."
-                // customStyles={customStyles}
-            />
+      title: "Product",
+      dataIndex: "productName",
+      key: "productName",
+      render: (_, record) => (
+        <div className="d-flex align-items-center">
+          <img
+            src={record.productImage}
+            alt={record.productName}
+            style={{ width: 50, height: 50, objectFit: "cover" }}
+          />
+          <span className="ms-2">{record.productName}</span>
         </div>
-    );
+      ),
+      sorter: (a, b) => a.productName.localeCompare(b.productName),
+    },
+    {
+      title: "Price (₹)",
+      dataIndex: "salePrice",
+      key: "salePrice",
+      sorter: (a, b) => parseFloat(a.salePrice) - parseFloat(b.salePrice),
+      render: (price) => `₹${parseFloat(price).toFixed(2)}`,
+    },
+    {
+      title: "Discount (%)",
+      dataIndex: "discount",
+      key: "discount",
+      sorter: (a, b) => a.discount - b.discount,
+    },
+    {
+      title: "Stock",
+      dataIndex: "stock",
+      key: "stock",
+      sorter: (a, b) => a.stock - b.stock,
+      render: (stock) => <Tag color={stock > 0 ? "green" : "red"}>{stock}</Tag>,
+    },
+    {
+      title: "Category",
+      dataIndex: ["categoryId", "name"],
+      key: "category",
+      render: (_, record) => record.categoryId?.name || "N/A",
+      sorter: (a, b) =>
+        (a.categoryId?.name || "").localeCompare(b.categoryId?.name || ""),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Link to={`/admin/update-product/${record._id}`}>
+            <Button icon={<EditOutlined />} type="primary" size="small">
+              Edit
+            </Button>
+          </Link>
+          <Popconfirm
+            title="Are you sure you want to delete this product?"
+            onConfirm={() => handleDelete(record._id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button icon={<DeleteOutlined />} type="danger" size="small">
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
+  // Filter products based on search
+  const filteredProducts = products.filter((p) =>
+    Object.values(p).join(" ").toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
+        <div>
+          <h1>Products</h1>
+          <ol className="breadcrumb mb-0">
+            <li className="breadcrumb-item">
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li className="breadcrumb-item active">Products</li>
+          </ol>
+        </div>
+        <Link to="/admin/add-product">
+          <Button type="primary" icon={<PlusOutlined />}>
+            Add Product
+          </Button>
+        </Link>
+      </div>
+
+      <Card>
+        <Input
+          placeholder="Search products..."
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          className="mb-3"
+        />
+        <Table
+          columns={columns}
+          dataSource={filteredProducts}
+          rowKey={(record) => record._id}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
+          scroll={{ x: "max-content" }}
+        />
+      </Card>
+    </div>
+  );
 };
 
 export default ProductList;

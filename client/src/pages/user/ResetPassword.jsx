@@ -1,123 +1,111 @@
 import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import { Form, Input, Button, Typography } from "antd";
+
+const { Title } = Typography;
 
 const ResetPassword = () => {
-    const [formData, setFormData] = useState({
-        newPassword: "",
-        confirmPassword: ""
-    });
-    const [errors, setErrors] = useState({});
-    const [email, setEmail] = useState("");  // Store email here
-    const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
 
-    useEffect(() => {
-        // Retrieve email from localStorage or from URL query params if needed
-        const storedEmail = localStorage.getItem("otpEmail");
-        if (!storedEmail) {
-            toast.error("Email not found. Please request a password reset.");
-            navigate("/forgot-password");  // Redirect to forgot password page if email is not found
-        }
-        setEmail(storedEmail);  // Set email in the state
-    }, [navigate]);
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("otpEmail");
+    if (!storedEmail) {
+      toast.error("Email not found. Please request a password reset.");
+      navigate("/forgot-password");
+    } else {
+      setEmail(storedEmail);
+    }
+  }, [navigate]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+  const onFinish = async (values) => {
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/users/reset-password",
+        { email, newPassword: values.newPassword }
+      );
 
-        // Validate and clear errors when corrected
-        const error = validateField(name, value);
-        setErrors(prevErrors => ({ ...prevErrors, [name]: error }));
-    };
+      if (response.data.message === "Password updated successfully") {
+        toast.success("Password reset successful!");
+        navigate("/login");
+      } else {
+        toast.error("Failed to reset password. Please try again.");
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Something went wrong.");
+    }
+  };
 
-    const validateField = (name, value) => {
-        let error = null;
-        if (!value.trim()) {
-            error = name === "newPassword" ? "New password is required" : "Confirm password is required";
-        } else if (name === "newPassword" && value.length < 6) {
-            error = "Password must be at least 6 characters long";
-        } else if (name === "confirmPassword" && value !== formData.newPassword) {
-            error = "Passwords do not match";
-        }
-        return error;
-    };
+  return (
+    <div className="container mt-5">
+      <div className="row justify-content-center">
+        <div className="col-md-6">
+          <div className="p-4 shadow-sm rounded">
+            <Title level={2} className="text-center">
+              Reset Password
+            </Title>
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={onFinish}
+              autoComplete="off"
+            >
+              <Form.Item
+                label="New Password"
+                name="newPassword"
+                rules={[
+                  {
+                    required: true,
+                    message: "Please input your new password!",
+                  },
+                  {
+                    min: 6,
+                    message: "Password must be at least 6 characters!",
+                  },
+                ]}
+              >
+                <Input.Password />
+              </Form.Item>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+              <Form.Item
+                label="Confirm Password"
+                name="confirmPassword"
+                dependencies={["newPassword"]}
+                rules={[
+                  { required: true, message: "Please confirm your password!" },
+                  ({ getFieldValue }) => ({
+                    validator(_, value) {
+                      if (!value || getFieldValue("newPassword") === value) {
+                        return Promise.resolve();
+                      }
+                      return Promise.reject(
+                        new Error("Passwords do not match!")
+                      );
+                    },
+                  }),
+                ]}
+              >
+                <Input.Password />
+              </Form.Item>
 
-        const formErrors = {};
-        Object.keys(formData).forEach(field => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
-        });
+              <Form.Item>
+                <Button type="primary" htmlType="submit" block>
+                  Reset Password
+                </Button>
+              </Form.Item>
+            </Form>
 
-        if (Object.values(formErrors).some(error => error)) {
-            setErrors(formErrors);
-            return;
-        }
-
-        setErrors({});
-
-        try {
-            // Send the password reset request to the backend
-            const response = await axios.post("http://localhost:8000/users/reset-password", {
-                email,
-                newPassword: formData.newPassword
-            });
-
-            if (response.data.message === "Password updated successfully") {
-                toast.success("Password reset successful!");
-                navigate("/login");  // Redirect to login page after successful password reset
-            } else {
-                toast.error("Failed to reset password. Please try again.");
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || "Something went wrong. Please try again.";
-            toast.error(msg);
-        }
-    };
-
-    return (
-        <div className="container">
-            <div className="row p-3 g-3 justify-content-center">
-                <div className="col-md-6">
-                    <div className="login-form d-flex flex-column justify-content-center h-100 align-items-center mt-4">
-                        <div className="mb-3 w-75">
-                            <h2 className="mb-3">Reset Password</h2>
-                            <div className="mb-4">Enter your new password</div>
-                            <form onSubmit={handleSubmit}>
-                                <input 
-                                    type="password" 
-                                    name="newPassword" 
-                                    className="w-100 " 
-                                    placeholder="New Password" 
-                                    value={formData.newPassword} 
-                                    onChange={handleChange} 
-                                />
-                                <p className="error mb-3">{errors.newPassword}</p>
-
-                                <input 
-                                    type="password" 
-                                    name="confirmPassword" 
-                                    className="w-100" 
-                                    placeholder="Confirm New Password" 
-                                    value={formData.confirmPassword} 
-                                    onChange={handleChange} 
-                                />
-                                <p className="error  mb-3">{errors.confirmPassword}</p>
-
-                                <input type="submit" value="Reset Password" className="btn-msg w-100" />
-                                <div className="mt-4 text-center">
-                                    <Link to="/login" className="dim link ms-2">Back to log in</Link>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+            <div className="text-center mt-3">
+              <Link to="/login">Back to log in</Link>
             </div>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default ResetPassword;

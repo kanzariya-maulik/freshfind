@@ -1,8 +1,11 @@
 import { Formik, Form, Field, ErrorMessage } from "formik";
 import { toast } from "react-toastify";
+import { Link } from "react-router-dom";
+import { Input, Button, Typography } from "antd";
 import userService from "../../service/userService";
 import { RegisterSchema } from "../../validation-schema/registerSchema";
-import { Link } from "react-router-dom";
+
+const { Title, Text } = Typography;
 
 const Register = () => {
   const initialValues = {
@@ -40,115 +43,121 @@ const Register = () => {
   };
 
   return (
-    <div className="container">
-      <div className="row p-3 g-3 mt-4 justify-content-center h-100 align-items-center">
+    <div className="container mt-5">
+      <div className="row justify-content-center">
         <div className="col-md-6">
-          <div className="register-form d-flex flex-column justify-content-center h-100 align-items-center">
-            <div className="mb-3 w-75">
-              <h2 className="mb-3">Create an account</h2>
-              <div className="mb-4">Enter your details below</div>
+          <div className="p-4 shadow-sm rounded">
+            <Title level={2} className="text-center mb-3">
+              Create an account
+            </Title>
+            <Text className="text-center d-block mb-4">
+              Enter your details below
+            </Text>
 
-              <Formik
-                initialValues={initialValues}
-                validationSchema={RegisterSchema}
-                onSubmit={handleSubmit}
-              >
-                {({ isSubmitting }) => (
-                  <Form className="login-form">
-                    <div className="names d-flex gap-3">
-                      <div className="w-50">
-                        <Field
-                          type="text"
-                          name="firstName"
-                          placeholder="First Name"
-                          className="w-100 p-2"
-                        />
-                        <ErrorMessage
-                          name="firstName"
-                          component="p"
-                          className="error mb-3"
-                        />
-                      </div>
-                      <div className="w-50">
-                        <Field
-                          type="text"
-                          name="lastName"
-                          placeholder="Last Name"
-                          className="w-100 p-2"
-                        />
-                        <ErrorMessage
-                          name="lastName"
-                          component="p"
-                          className="error mb-3"
-                        />
-                      </div>
+            <Formik
+              initialValues={initialValues}
+              validationSchema={RegisterSchema}
+              onSubmit={handleSubmit}
+            >
+              {({ isSubmitting }) => (
+                <Form>
+                  <div className="d-flex gap-2 mb-3">
+                    <div className="flex-fill">
+                      <Field name="firstName">
+                        {({ field }) => (
+                          <Input {...field} placeholder="First Name" />
+                        )}
+                      </Field>
+                      <ErrorMessage
+                        name="firstName"
+                        component="div"
+                        className="text-danger mt-1"
+                      />
                     </div>
+                    <div className="flex-fill">
+                      <Field name="lastName">
+                        {({ field }) => (
+                          <Input {...field} placeholder="Last Name" />
+                        )}
+                      </Field>
+                      <ErrorMessage
+                        name="lastName"
+                        component="div"
+                        className="text-danger mt-1"
+                      />
+                    </div>
+                  </div>
 
-                    <Field
-                      type="text"
-                      name="email"
-                      placeholder="Email"
-                      className="w-100 p-2"
-                    />
+                  <div className="mb-3">
+                    <Field name="email">
+                      {({ field }) => <Input {...field} placeholder="Email" />}
+                    </Field>
                     <ErrorMessage
                       name="email"
-                      component="p"
-                      className="error mb-3"
+                      component="div"
+                      className="text-danger mt-1"
                     />
+                  </div>
 
-                    <Field
-                      type="text"
-                      name="phone"
-                      placeholder="Mobile Number"
-                      className="w-100 p-2"
-                    />
+                  <div className="mb-3">
+                    <Field name="phone">
+                      {({ field }) => (
+                        <Input {...field} placeholder="Mobile Number" />
+                      )}
+                    </Field>
                     <ErrorMessage
                       name="phone"
-                      component="p"
-                      className="error mb-3"
+                      component="div"
+                      className="text-danger mt-1"
                     />
+                  </div>
 
-                    <Field
-                      type="password"
-                      name="password"
-                      placeholder="Password"
-                      className="w-100 p-2"
-                    />
+                  <div className="mb-3">
+                    <Field name="password">
+                      {({ field }) => (
+                        <Input.Password {...field} placeholder="Password" />
+                      )}
+                    </Field>
                     <ErrorMessage
                       name="password"
-                      component="p"
-                      className="error mb-3"
+                      component="div"
+                      className="text-danger mt-1"
                     />
+                  </div>
 
-                    <Field
-                      type="password"
-                      name="confirmPassword"
-                      placeholder="Confirm Password"
-                      className="w-100 p-2"
-                    />
+                  <div className="mb-3">
+                    <Field name="confirmPassword">
+                      {({ field }) => (
+                        <Input.Password
+                          {...field}
+                          placeholder="Confirm Password"
+                        />
+                      )}
+                    </Field>
                     <ErrorMessage
                       name="confirmPassword"
-                      component="p"
-                      className="error mb-3"
+                      component="div"
+                      className="text-danger mt-1"
                     />
+                  </div>
 
-                    <button
-                      type="submit"
-                      className="btn-msg w-100"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? "Submitting..." : "Create an account"}
-                    </button>
-                  </Form>
-                )}
-              </Formik>
+                  <Button
+                    type="primary"
+                    htmlType="submit"
+                    block
+                    loading={isSubmitting}
+                  >
+                    {isSubmitting ? "Submitting..." : "Create an account"}
+                  </Button>
+                </Form>
+              )}
+            </Formik>
 
-              <div className="mt-4 text-center">
-                Already have an account?{" "}
-                <Link to="/login" className="dim link ms-2">
-                  Log in
-                </Link>
-              </div>
+            <div className="mt-4 text-center">
+              Already have an account?{" "}
+              <Link to="/login" className="ms-2">
+                Log in
+              </Link>
             </div>
           </div>
         </div>

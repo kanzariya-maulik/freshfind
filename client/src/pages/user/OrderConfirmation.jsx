@@ -1,21 +1,34 @@
 import { Link } from "react-router-dom";
+import { Result, Button, Space } from "antd";
+import { CheckCircleOutlined } from "@ant-design/icons";
 
 const OrderConfirmation = () => {
-    return (
-        <div className="container d-flex flex-column align-items-center justify-content-center w-100 h-100">
-            <div className="circle mt-5">
-                <i className="fa-solid fa-check"></i>
-            </div>
-            <div className="content text-center mb-5">
-                <h5>Thank you for ordering!</h5>
-                <p>Your order has been successfully placed and will be processed shortly.</p>
-                <div className="buttons-container">
-                    <Link className="primary-btn view-order-btn" to="/order-history">View Orders</Link>
-                    <Link className="primary-btn checkout-link" to="/shop">Continue Shopping</Link>
-                </div>
-            </div>
-        </div>
-    );
+  return (
+    <div
+      className="d-flex justify-content-center align-items-center"
+      style={{ minHeight: "80vh", padding: "2rem" }}
+    >
+      <Result
+        icon={
+          <CheckCircleOutlined style={{ color: "#52c41a", fontSize: "48px" }} />
+        }
+        title="Thank you for ordering!"
+        subTitle="Your order has been successfully placed and will be processed shortly."
+        extra={
+          <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+            <Link to="/order-history">
+              <Button type="primary" block>
+                View Orders
+              </Button>
+            </Link>
+            <Link to="/shop">
+              <Button block>Continue Shopping</Button>
+            </Link>
+          </Space>
+        }
+      />
+    </div>
+  );
 };
 
 export default OrderConfirmation;

@@ -1,11 +1,15 @@
-import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Carousel, Row, Col, Card, Typography, Button, Badge } from "antd";
 import axios from "axios";
 import ProductList from "../../components/user/ProductList";
+
+const { Title, Text } = Typography;
+
 const Home = () => {
   const [banners, setBanners] = useState([]);
   const [offers, setOffers] = useState([]);
-  const [tredingProducts, setTrendingProducts] = useState([]);
+  const [trendingProducts, setTrendingProducts] = useState([]);
   const [latestProducts, setLatestProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
@@ -31,6 +35,7 @@ const Home = () => {
     const res = await axios.get("http://localhost:8000/products/trending");
     setTrendingProducts(res.data);
   };
+
   const fetchLatestProducts = async () => {
     const res = await axios.get("http://localhost:8000/products/latest");
     setLatestProducts(res.data);
@@ -44,175 +49,122 @@ const Home = () => {
   const sliderBanners = banners.filter((b) => b.type === "slider");
   const promoBanners = banners.filter((b) => b.type !== "slider");
 
-
   return (
     <div>
-      <Carousel banners={sliderBanners} />
-      {/* <Categories categories={categories} /> */}
+      <BannerCarousel banners={sliderBanners} />
       <ExclusiveOffers offers={offers} />
+      <Categories categories={categories} />
 
       <section className="mt-5 container">
-        <div className="d-flex justify-content-between featured-products">
-          <h4>Trending products</h4>
-        </div>
-        <ProductList products={tredingProducts} />
+        <Title level={4}>Trending Products</Title>
+        <ProductList products={trendingProducts} />
 
-        <div className="row my-5 gap-md-0 gap-3">
-            {promoBanners[0] && (
-                <div className="col-md-6 col-12">
-                <div className="border position-relative banner">
-                    <img src={promoBanners[0].bannerImage} alt="" className="img-fluid" />
-                    <div className="banner-content">
-                    <p className="label">Free Shipping</p>
-                    <h5 className="heading my-2">Special Deal</h5>
-                    <p className="content p-0 align-self-start">
-                        Shipping is free on your first order
-                    </p>
-                    <Link className="primary-btn order-link" to="/shop">
-                        Shop Now <i className="fas fa-arrow-right ms-2"></i>
+        <Row gutter={[16, 16]} className="my-5">
+          {promoBanners.map((banner, index) => (
+            <Col xs={24} md={12} key={banner._id}>
+              <Card
+                cover={
+                  <img alt={`Banner ${index + 1}`} src={banner.bannerImage} />
+                }
+                className="position-relative"
+              >
+                <Badge.Ribbon text={banner.label || "Special"} color="green">
+                  <Title level={5}>{banner.heading || "Exclusive Deal"}</Title>
+                  <Text>{banner.content || "Grab this offer now!"}</Text>
+                  <div className="mt-3">
+                    <Link to="/shop">
+                      <Button type="primary">
+                        {banner.buttonText || "Shop Now"}
+                      </Button>
                     </Link>
-                    </div>
-                </div>
-                </div>
-            )}
+                  </div>
+                </Badge.Ribbon>
+              </Card>
+            </Col>
+          ))}
+        </Row>
 
-            {promoBanners[1] && (
-                <div className="col-md-6 col-12">
-                <div className="border position-relative banner">
-                    <img src={promoBanners[1].bannerImage} alt="" className="img-fluid" />
-                    <div className="banner-content">
-                    <p className="label">Exclusive Offer</p>
-                    <h5 className="heading my-2">Buy One Get One</h5>
-                    <p className="content p-0 align-self-start">
-                        Get an extra item absolutely free on selected products
-                    </p>
-                    <Link className="primary-btn order-link" to="/shop">
-                        Grab Offer <i className="fas fa-arrow-right ms-2"></i>
-                    </Link>
-                    </div>
-                </div>
-                </div>
-            )}
-        </div>
-
-
-        <div className="d-flex justify-content-between featured-products">
-          <h4>Latest products</h4>
-        </div>
+        <Title level={4}>Latest Products</Title>
         <ProductList products={latestProducts} />
       </section>
     </div>
   );
 };
 
-const Carousel = ({ banners }) => {
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const handlePrev = () => {
-    setActiveIndex((prev) => (prev === 0 ? banners.length - 1 : prev - 1));
-  };
-
-  const handleNext = () => {
-    setActiveIndex((prev) => (prev === banners.length - 1 ? 0 : prev + 1));
-  };
-
-  return (
-    <div id="carouselExampleIndicators" className="carousel slide">
-      <ol className="carousel-indicators">
-        {banners.map((_, index) => (
-          <li
-            key={index}
-            className={index === activeIndex ? "active" : ""}
-            onClick={() => setActiveIndex(index)}
-          ></li>
-        ))}
-      </ol>
-
-      <div className="carousel-inner">
-        {banners.map((banner, index) => (
-          <div
-            key={banner._id}
-            className={`carousel-item ${index === activeIndex ? "active" : ""}`}
-          >
-            <img
-              className="d-block w-100"
-              src={banner.bannerImage}
-              alt={`Banner ${index + 1}`}
-            />
-            {index === 0 && (
-              <div className="carousel-caption h-100 d-md-block">
-                <div className="row align-items-center h-100">
-                  <div className="hero-content col-md-6 text-black text-center text-md-start">
-                    <span>Welcome to</span>
-                    <h1 className="text-black">PureBite</h1>
-                    <p>
-                      Discover a world of fresh, quality groceries delivered
-                      straight to your door.
-                    </p>
-                    <Link to="/shop" className="btn btn-primary">
-                      Explore
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
+const BannerCarousel = ({ banners }) => (
+  <Carousel autoplay>
+    {banners.map((banner) => (
+      <div key={banner._id} style={{ position: "relative" }}>
+        <img
+          src={banner.bannerImage}
+          alt={banner._id}
+          style={{ width: "100%", maxHeight: "400px", objectFit: "cover" }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            top: "20%",
+            left: "10%",
+            color: "#fff",
+          }}
+        >
+          <Title level={2} style={{ color: "#fff" }}>
+            {banner.heading || "Fresh Find"}
+          </Title>
+          <Text style={{ color: "#fff" }}>{banner.content}</Text>
+          <div className="mt-3">
+            <Link to="/shop">
+              <Button type="primary">Explore</Button>
+            </Link>
           </div>
-        ))}
+        </div>
       </div>
-
-      {banners.length >= 2 && (
-        <>
-          <button className="carousel-control-prev" onClick={handlePrev}>
-            <span className="carousel-control-prev-icon" />
-          </button>
-          <button className="carousel-control-next" onClick={handleNext}>
-            <span className="carousel-control-next-icon" />
-          </button>
-        </>
-      )}
-    </div>
-  );
-};
+    ))}
+  </Carousel>
+);
 
 const ExclusiveOffers = ({ offers }) => (
   <div className="container mt-5">
-    <h2 className="text-center mb-4">Exclusive Offers</h2>
-    <div className="row">
+    <Title level={3} className="text-center mb-4">
+      Exclusive Offers
+    </Title>
+    <Row gutter={[16, 16]}>
       {offers.map((offer) => (
-        <div key={offer._id} className="col-md-6 mb-4">
-          <div className="card border-success shadow-sm">
-            <div className="card-body text-center">
-              <h5 className="card-title text-success">{offer.discount}% Discount</h5>
-              <p className="card-text">On orders above ₹{offer.minimumOrder}</p>
-              <p className="card-text">
-                <strong>Use Code:</strong>{" "}
-                <span className="badge bg-success">{offer.offerCode}</span>
-              </p>
+        <Col xs={24} md={12} key={offer._id}>
+          <Card bordered hoverable>
+            <Title level={4} style={{ color: "green" }}>
+              {offer.discount}% Discount
+            </Title>
+            <Text>On orders above ₹{offer.minimumOrder}</Text>
+            <div className="mt-2">
+              <Badge
+                count={offer.offerCode}
+                style={{ backgroundColor: "#52c41a" }}
+              />
             </div>
-          </div>
-        </div>
+          </Card>
+        </Col>
       ))}
-    </div>
+    </Row>
   </div>
 );
 
 const Categories = ({ categories }) => (
   <div className="container mt-4">
-    <div className="row justify-content-center">
+    <Row justify="center" gutter={[16, 16]}>
       {categories.map((category) => (
-        <div key={category._id} className="col-md-2 col-4 text-center mb-3">
+        <Col xs={6} sm={4} md={2} key={category._id} className="text-center">
           <img
             src={category.image}
             alt={category.name}
             className="img-fluid rounded-circle mb-2"
             style={{ height: "80px", width: "80px", objectFit: "cover" }}
           />
-          <p className="mb-0">{category.name}</p>
-        </div>
+          <Text>{category.name}</Text>
+        </Col>
       ))}
-    </div>
+    </Row>
   </div>
 );
-
 
 export default Home;

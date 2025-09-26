@@ -2,142 +2,113 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { Form, Select, InputNumber, Button } from "antd";
 
 const AddToCart = () => {
-    const { userId } = useParams(); // ✅ Get userId from route
-    const [products, setProducts] = useState([]);
-    const [addingToCart, setAddingToCart] = useState(false);
+  const { userId } = useParams();
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
 
-    const [formData, setFormData] = useState({
-        productId: "",
-        quantity: "",
-    });
-
-    const [errors, setErrors] = useState({});
-
-    useEffect(() => {
-        fetchProducts();
-    }, []);
-
+  useEffect(() => {
     const fetchProducts = async () => {
-        try {
-            const res = await axios.get("http://localhost:8000/products"); // 🔁 Adjust endpoint if needed
-            setProducts(res.data);
-        } catch (error) {
-            console.error("Failed to fetch products:", error);
-            toast.error("Failed to load products.");
-        }
+      try {
+        const res = await axios.get("http://localhost:8000/products");
+        setProducts(res.data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load products.");
+      }
     };
+    fetchProducts();
+  }, []);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      await axios.post("http://localhost:8000/cart", {
+        userId,
+        productId: values.productId,
+        quantity: values.quantity,
+      });
+      toast.success("Product added to cart successfully!");
+      form.resetFields();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add product to cart.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const error = validateField(name, value);
-        setErrors((prev) => ({ ...prev, [name]: error }));
-    };
+  return (
+    <div className="container mt-4">
+      <h1>Add Product to Cart</h1>
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb mb-4">
+          <li className="breadcrumb-item">
+            <Link to="/admin">Dashboard</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to="/admin/users">Users</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to={`/admin/cart/${userId}`}>Cart</Link>
+          </li>
+          <li className="breadcrumb-item active" aria-current="page">
+            Add Product to Cart
+          </li>
+        </ol>
+      </nav>
+      <h5>User ID: {userId}</h5>
 
-    const validateField = (name, value) => {
-        let error = null;
-        if (name === "productId" && !value) error = "Please select a product.";
-        if (name === "quantity" && (!value || value <= 0)) error = "Quantity must be at least 1.";
-        return error;
-    };
+      <div className="card mb-4">
+        <div className="card-body">
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            initialValues={{ quantity: 1 }}
+          >
+            <Form.Item
+              label="Product"
+              name="productId"
+              rules={[{ required: true, message: "Please select a product" }]}
+            >
+              <Select placeholder="Select Product">
+                {products.map((prod) => (
+                  <Select.Option key={prod._id} value={prod._id}>
+                    {prod.productName}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+            <Form.Item
+              label="Quantity"
+              name="quantity"
+              rules={[
+                { required: true, message: "Please enter quantity" },
+                {
+                  type: "number",
+                  min: 1,
+                  message: "Quantity must be at least 1",
+                },
+              ]}
+            >
+              <InputNumber min={1} style={{ width: "100%" }} />
+            </Form.Item>
 
-        const formErrors = {};
-        Object.keys(formData).forEach((field) => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
-        });
-
-        if (Object.values(formErrors).length > 0) {
-            setErrors(formErrors);
-            return;
-        }
-
-        setAddingToCart(true);
-        try {
-            await axios.post("http://localhost:8000/cart", {
-                userId,
-                productId: formData.productId,
-                quantity: formData.quantity,
-            });
-            toast.success("Product added to cart successfully!");
-            setFormData({ productId: "", quantity: "" });
-        } catch (err) {
-            console.error(err);
-            toast.error("Failed to add product to cart.");
-        } finally {
-            setAddingToCart(false);
-        }
-    };
-
-    return (
-        <div className="container mt-4">
-            <h1>Add Product to Cart</h1>
-            <nav aria-label="breadcrumb">
-                <ol className="breadcrumb mb-4">
-                    <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                    <li className="breadcrumb-item"><Link to="/admin/users">Users</Link></li>
-                    <li className="breadcrumb-item"><Link to={`/admin/cart/${userId}`}>Cart</Link></li>
-                    <li className="breadcrumb-item active" aria-current="page">Add Product to Cart</li>
-                </ol>
-            </nav>
-            <h5>User ID: {userId}</h5>
-
-            <div className="card mb-4">
-                <div className="card-body">
-                    <form onSubmit={handleSubmit}>
-                        <div className="row">
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label htmlFor="productId" className="form-label">Product</label>
-                                    <select
-                                        className="form-select"
-                                        id="productId"
-                                        name="productId"
-                                        value={formData.productId}
-                                        onChange={handleChange}
-                                    >
-                                        <option value="">Select Product</option>
-                                        {products.map((prod) => (
-                                            <option key={prod._id} value={prod._id}>
-                                                {prod.productName}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {errors.productId && <p className="text-danger">{errors.productId}</p>}
-                                </div>
-                            </div>
-
-                            <div className="col-md-6">
-                                <div className="mb-3">
-                                    <label htmlFor="quantity" className="form-label">Quantity</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        id="quantity"
-                                        name="quantity"
-                                        min="1"
-                                        value={formData.quantity}
-                                        onChange={handleChange}
-                                    />
-                                    {errors.quantity && <p className="text-danger">{errors.quantity}</p>}
-                                </div>
-                            </div>
-                        </div>
-
-                        <button type="submit" className="btn btn-primary" disabled={addingToCart}>
-                            {addingToCart ? "Adding..." : "Add to Cart"}
-                        </button>
-                    </form>
-                </div>
-            </div>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                Add to Cart
+              </Button>
+            </Form.Item>
+          </Form>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default AddToCart;

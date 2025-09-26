@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import Swal from "sweetalert2";
+import {
+  Table,
+  Button,
+  Image,
+  Typography,
+  Row,
+  Col,
+  message,
+  Breadcrumb,
+  Space,
+  Popconfirm,
+} from "antd";
+import { PlusOutlined, MinusOutlined, DeleteOutlined } from "@ant-design/icons";
 import axios from "axios";
-import { toast } from "react-toastify";
-import DataTable from "react-data-table-component";
+
+const { Title } = Typography;
 
 const Cart = () => {
   const { userId } = useParams();
@@ -20,7 +32,7 @@ const Cart = () => {
     setLoading(true);
     try {
       const { data } = await axios.get(`http://localhost:8000/cart/${userId}`);
-      const cartItems = data.items.map(item => ({
+      const cartItems = data.items.map((item) => ({
         id: item.productId._id,
         name: item.productId.productName,
         quantity: item.quantity,
@@ -30,161 +42,164 @@ const Cart = () => {
       }));
       setCart(cartItems);
       calculateTotal(cartItems);
+      if (data.user)
+        setUser({
+          firstName: data.user.firstName,
+          lastName: data.user.lastName,
+        });
     } catch (err) {
       console.error("Failed to fetch cart", err);
+      message.error("Failed to fetch cart");
     } finally {
       setLoading(false);
     }
   };
 
   const calculateTotal = (cartItems) => {
-    const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    const total = cartItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
+      0
+    );
     setTotalAmount(total);
   };
 
-  const handleRemove = (productId) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "Do you want to remove this product from the cart?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, remove it!",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        axios
-          .delete(`http://localhost:8000/cart/${userId}`, {
-            data: { productId },
-          })
-          .then(() => {
-            const updated = cart.filter((item) => item.id !== productId);
-            setCart(updated);
-            calculateTotal(updated);
-            toast.success("Product removed from cart!", {
-              position: "top-right",
-            });
-          })
-          .catch(() => {
-            toast.error("Failed to remove product!");
-          });
-      }
-    });
+  const handleRemove = async (productId) => {
+    try {
+      await axios.delete(`http://localhost:8000/cart/${userId}`, {
+        data: { productId },
+      });
+      const updated = cart.filter((item) => item.id !== productId);
+      setCart(updated);
+      calculateTotal(updated);
+      message.success("Product removed from cart!");
+    } catch {
+      message.error("Failed to remove product!");
+    }
   };
 
-  const updateQuantity = (id, amount) => {
+  const updateQuantity = async (id, amount) => {
     const updatedItem = cart.find((item) => item.id === id);
     if (!updatedItem) return;
 
     const newQuantity = updatedItem.quantity + amount;
     if (newQuantity < 1) return;
 
-    axios
-      .put(`http://localhost:8000/cart/${userId}`, {
+    try {
+      await axios.put(`http://localhost:8000/cart/${userId}`, {
         productId: id,
         quantity: newQuantity,
-      })
-      .then(() => {
-        const updatedCart = cart.map((item) =>
-          item.id === id ? { ...item, quantity: newQuantity } : item
-        );
-        setCart(updatedCart);
-        calculateTotal(updatedCart);
-        toast.success("Cart updated successfully");
-      })
-      .catch(() => {
-        toast.error("Failed to update cart");
       });
+      const updatedCart = cart.map((item) =>
+        item.id === id ? { ...item, quantity: newQuantity } : item
+      );
+      setCart(updatedCart);
+      calculateTotal(updatedCart);
+      message.success("Cart updated successfully");
+    } catch {
+      message.error("Failed to update cart");
+    }
   };
 
   const columns = [
     {
-      name: "Product",
-      selector: (row) => (
-        <div className="d-flex align-items-center">
-          <img
-            src={row.image}
-            alt={row.name}
-            style={{ width: 50, height: 50, objectFit: "cover" }}
-            className="me-2"
+      title: "Product",
+      dataIndex: "name",
+      key: "name",
+      render: (_, record) => (
+        <Space>
+          <Image width={50} height={50} src={record.image} />
+          <Link to="/admin/view-product">{record.name}</Link>
+        </Space>
+      ),
+    },
+    {
+      title: "Quantity",
+      key: "quantity",
+      render: (_, record) => (
+        <Space>
+          <Button
+            size="small"
+            icon={<MinusOutlined />}
+            onClick={() => updateQuantity(record.id, -1)}
           />
-          <Link to="/admin/view-product">{row.name}</Link>
-        </div>
-      ),
-      sortable: true,
-    },
-    {
-      name: "Quantity",
-      cell: (row) => (
-        <div className="d-flex align-items-center gap-2">
-          <button
-            className="btn btn-sm btn-secondary"
-            onClick={() => updateQuantity(row.id, -1)}
-          >
-            -
-          </button>
-          {row.quantity}
-          <button
-            className="btn btn-sm btn-secondary"
-            onClick={() => updateQuantity(row.id, 1)}
-          >
-            +
-          </button>
-        </div>
+          {record.quantity}
+          <Button
+            size="small"
+            icon={<PlusOutlined />}
+            onClick={() => updateQuantity(record.id, 1)}
+          />
+        </Space>
       ),
     },
     {
-      name: "Price",
-      selector: (row) => `₹${row.price}`,
+      title: "Price",
+      dataIndex: "price",
+      key: "price",
+      render: (price) => `₹${price}`,
     },
     {
-      name: "Total",
-      selector: (row) => `₹${row.price * row.quantity}`,
+      title: "Total",
+      key: "total",
+      render: (_, record) => `₹${record.price * record.quantity}`,
     },
     {
-      name: "Actions",
-      cell: (row) => (
-        <button
-          className="btn btn-danger"
-          onClick={() => handleRemove(row.id)}
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Popconfirm
+          title="Are you sure to remove this item?"
+          onConfirm={() => handleRemove(record.id)}
+          okText="Yes"
+          cancelText="No"
         >
-          Remove
-        </button>
+          <Button danger icon={<DeleteOutlined />}>
+            Remove
+          </Button>
+        </Popconfirm>
       ),
     },
   ];
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-        <div>
-          <h1>Cart of {user.firstName} {user.lastName}</h1>
-          <ol className="breadcrumb mb-0">
-            <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-            <li className="breadcrumb-item"><Link to="/admin/users">Users</Link></li>
-            <li className="breadcrumb-item active">Cart</li>
-          </ol>
-        </div>
-        <Link className="btn btn-primary text-nowrap" to={`/admin/add-to-cart/${userId}`}>Add Items</Link>
-      </div>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+        <Col>
+          <Title level={3}>
+            Cart of {user.firstName} {user.lastName}
+          </Title>
+          <Breadcrumb>
+            <Breadcrumb.Item>
+              <Link to="/admin">Dashboard</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>
+              <Link to="/admin/users">Users</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>Cart</Breadcrumb.Item>
+          </Breadcrumb>
+        </Col>
+        <Col>
+          <Link to={`/admin/add-to-cart/${userId}`}>
+            <Button type="primary">Add Items</Button>
+          </Link>
+        </Col>
+      </Row>
 
-      <div className="card-body">
-        <DataTable
-          columns={columns}
-          data={cart}
-          progressPending={loading}
-          persistTableHead
-          responsive
-          striped
-          highlightOnHover
-          noDataComponent="No items in the cart."
-        />
-        {cart.length > 0 && (
-          <div className="d-flex justify-content-end mt-3">
-            <h5>Total Amount: ₹{totalAmount}</h5>
-          </div>
-        )}
-      </div>
+      <Table
+        columns={columns}
+        dataSource={cart}
+        rowKey="id"
+        loading={loading}
+        pagination={false}
+        locale={{ emptyText: "No items in the cart." }}
+      />
+
+      {cart.length > 0 && (
+        <Row justify="end" style={{ marginTop: 16 }}>
+          <Col>
+            <Title level={5}>Total Amount: ₹{totalAmount}</Title>
+          </Col>
+        </Row>
+      )}
     </div>
   );
 };

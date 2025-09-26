@@ -1,58 +1,48 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import React from "react";
+import { Form, Input, Button, message } from "antd";
+import { useNavigate } from "react-router-dom";
 
 const UpdateEmailForm = () => {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [error, setError] = useState(null);
+  const [form] = Form.useForm();
+  const navigate = useNavigate();
 
-    const validateEmail = (value) => {
-        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-        if (!value.trim()) return "Email is required";
-        if (!emailRegex.test(value)) return "Invalid email format";
-        return null;
-    };
+  const handleSubmit = (values) => {
+    // Here you can call your API to update email if needed
+    console.log("Email submitted:", values.email);
+    message.success("Email updated successfully!");
+    navigate("/verify-email");
+  };
 
-    const handleChange = (e) => {
-        const value = e.target.value;
-        setEmail(value);
-        setError(validateEmail(value));
-    };
+  return (
+    <div>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        style={{ maxWidth: 400 }}
+      >
+        <Form.Item
+          label="Email"
+          name="email"
+          rules={[
+            { required: true, message: "Email is required" },
+            {
+              type: "email",
+              message: "Please enter a valid email address",
+            },
+          ]}
+        >
+          <Input placeholder="Your Email*" />
+        </Form.Item>
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const emailError = validateEmail(email);
-        if (emailError) {
-            setError(emailError);
-            return;
-        }
-        setError(null);
-        navigate("/verify-email");
-    };
-
-    return (
-        <div>
-            <form className="edit-profile form" onSubmit={handleSubmit}>
-                <div className="col-12">
-                    <label className="form-label">Email</label>
-                    <input 
-                        type="text" 
-                        className="w-100" 
-                        name="email" 
-                        placeholder="Your Email*" 
-                        value={email} 
-                        onChange={handleChange} 
-                    />
-                    {error && <p className="error" style={{ color: 'red' }}>{error}</p>}
-                </div>
-
-                <div className="d-flex justify-content-end">
-                    <input type="submit" value="Update Email" className="btn-msg mt-3" />
-                </div>
-            </form>
-        </div>
-    );
+        <Form.Item>
+          <Button type="primary" htmlType="submit">
+            Update Email
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
 };
 
 export default UpdateEmailForm;

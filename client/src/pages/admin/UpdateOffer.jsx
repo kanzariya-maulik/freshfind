@@ -1,228 +1,209 @@
 import { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import {
+  Form,
+  Input,
+  InputNumber,
+  Button,
+  DatePicker,
+  Card,
+  Typography,
+  message,
+  Row,
+  Col,
+} from "antd";
 import axios from "axios";
+import moment from "moment";
+
+const { Title } = Typography;
 
 const UpdateOffer = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(true);
 
-    const [formData, setFormData] = useState({
-        offerDescription: "",
-        offerCode: "",
-        discount: "",
-        maxDiscount: "",
-        minimumOrder: "",
-        startDate: "",
-        endDate: "",
-    });
+  useEffect(() => {
+    const fetchOffer = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/offers/${id}`);
+        const data = res.data;
 
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchOffer = async () => {
-            try {
-                const response = await axios.get(`http://localhost:8000/offers/${id}`);
-                const data = response.data;
-
-                setFormData({
-                    offerDescription: data.offerDescription || "",
-                    offerCode: data.offerCode || "",
-                    discount: data.discount?.toString() || "",
-                    maxDiscount: data.maxDiscount?.toString() || "",
-                    minimumOrder: data.minimumOrder?.toString() || "",
-                    startDate: data.startDate?.split("T")[0] || "",
-                    endDate: data.endDate?.split("T")[0] || "",
-                });
-            } catch (error) {
-                toast.error("Failed to fetch offer details.");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOffer();
-    }, [id]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-
-        const error = validateField(name, value);
-        setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-    };
-
-    const validateField = (name, value) => {
-        let error = null;
-
-        if (name === "offerDescription" && (!value.trim() || value.length < 5)) {
-            error = "Offer description must be at least 5 characters.";
-        }
-
-        if (name === "offerCode" && (!/^[A-Z0-9]+$/.test(value) || value.length < 3 || value.length > 10)) {
-            error = "Offer code must be 3-10 uppercase letters or numbers.";
-        }
-
-        if (name === "discount" && (!/^\d+$/.test(value) || +value < 1 || +value > 100)) {
-            error = "Discount must be between 1% and 100%.";
-        }
-
-        if ((name === "maxDiscount" || name === "minimumOrder") && (!/^\d+$/.test(value) || +value <= 0)) {
-            error = `${name === "maxDiscount" ? "Maximum discount" : "Minimum order"} must be greater than 0.`;
-        }
-
-        if (name === "startDate" && !value) {
-            error = "Start date is required.";
-        }
-
-        if (name === "endDate") {
-            if (!value) {
-                error = "End date is required.";
-            } else if (formData.startDate && new Date(value) <= new Date(formData.startDate)) {
-                error = "End date must be after start date.";
-            }
-        }
-
-        return error;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        const formErrors = {};
-        Object.keys(formData).forEach((field) => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
+        form.setFieldsValue({
+          offerDescription: data.offerDescription || "",
+          offerCode: data.offerCode || "",
+          discount: data.discount || 0,
+          maxDiscount: data.maxDiscount || 0,
+          minimumOrder: data.minimumOrder || 0,
+          startDate: data.startDate ? moment(data.startDate) : null,
+          endDate: data.endDate ? moment(data.endDate) : null,
         });
-
-        if (Object.keys(formErrors).length > 0) {
-            setErrors(formErrors);
-            return;
-        }
-
-        try {
-            await axios.put(`http://localhost:8000/offers/${id}`, {
-                offerDescription: formData.offerDescription,
-                offerCode: formData.offerCode,
-                discount: parseFloat(formData.discount),
-                maxDiscount: parseFloat(formData.maxDiscount),
-                minimumOrder: parseFloat(formData.minimumOrder),
-                startDate: formData.startDate,
-                endDate: formData.endDate,
-            });
-
-            toast.success("Offer updated successfully!");
-            navigate("/admin/offers");
-        } catch (error) {
-            toast.error("Failed to update the offer.");
-        }
+      } catch (err) {
+        console.error(err);
+        message.error("Failed to fetch offer details.");
+      } finally {
+        setLoading(false);
+      }
     };
+    fetchOffer();
+  }, [id, form]);
 
-    if (loading) return <p>Loading offer data...</p>;
+  const onFinish = async (values) => {
+    try {
+      setLoading(true);
+      await axios.put(`http://localhost:8000/offers/${id}`, {
+        offerDescription: values.offerDescription,
+        offerCode: values.offerCode,
+        discount: values.discount,
+        maxDiscount: values.maxDiscount,
+        minimumOrder: values.minimumOrder,
+        startDate: values.startDate.format("YYYY-MM-DD"),
+        endDate: values.endDate.format("YYYY-MM-DD"),
+      });
 
-    return (
-        <div>
-            <h1 className="mt-4">Update Offer</h1>
-            <ol className="breadcrumb mb-4">
-                <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                <li className="breadcrumb-item"><Link to="/admin/offers">Offers</Link></li>
-                <li className="breadcrumb-item active">Update Offer</li>
-            </ol>
+      message.success("Offer updated successfully!");
+      navigate("/admin/offers");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to update the offer.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <div className="card mb-4">
-                <div className="card-body">
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                            <label className="form-label">Offer Description</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="offerDescription"
-                                value={formData.offerDescription}
-                                onChange={handleChange}
-                            />
-                            {errors.offerDescription && <p className="text-danger">{errors.offerDescription}</p>}
-                        </div>
+  const validateEndDate = (_, value) => {
+    const startDate = form.getFieldValue("startDate");
+    if (startDate && value && value.isSameOrBefore(startDate)) {
+      return Promise.reject(new Error("End date must be after start date."));
+    }
+    return Promise.resolve();
+  };
 
-                        <div className="mb-3">
-                            <label className="form-label">Offer Code</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="offerCode"
-                                value={formData.offerCode}
-                                onChange={handleChange}
-                            />
-                            {errors.offerCode && <p className="text-danger">{errors.offerCode}</p>}
-                        </div>
+  if (loading) return <p>Loading offer data...</p>;
 
-                        <div className="mb-3">
-                            <label className="form-label">Discount (%)</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="discount"
-                                value={formData.discount}
-                                onChange={handleChange}
-                            />
-                            {errors.discount && <p className="text-danger">{errors.discount}</p>}
-                        </div>
+  return (
+    <div>
+      <Title level={2} className="mt-4">
+        Update Offer
+      </Title>
 
-                        <div className="mb-3">
-                            <label className="form-label">Maximum Discount Amount</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="maxDiscount"
-                                value={formData.maxDiscount}
-                                onChange={handleChange}
-                            />
-                            {errors.maxDiscount && <p className="text-danger">{errors.maxDiscount}</p>}
-                        </div>
+      <ol className="breadcrumb mb-4">
+        <li className="breadcrumb-item">
+          <Link to="/admin">Dashboard</Link>
+        </li>
+        <li className="breadcrumb-item">
+          <Link to="/admin/offers">Offers</Link>
+        </li>
+        <li className="breadcrumb-item active">Update Offer</li>
+      </ol>
 
-                        <div className="mb-3">
-                            <label className="form-label">Minimum Order Amount</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                name="minimumOrder"
-                                value={formData.minimumOrder}
-                                onChange={handleChange}
-                            />
-                            {errors.minimumOrder && <p className="text-danger">{errors.minimumOrder}</p>}
-                        </div>
+      <Card>
+        <Form form={form} layout="vertical" onFinish={onFinish}>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Offer Description"
+                name="offerDescription"
+                rules={[
+                  { required: true, message: "Offer description is required" },
+                  { min: 5, message: "Must be at least 5 characters" },
+                ]}
+              >
+                <Input placeholder="Enter offer description" />
+              </Form.Item>
+            </Col>
 
-                        <div className="mb-3">
-                            <label className="form-label">Start Date</label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                name="startDate"
-                                value={formData.startDate}
-                                onChange={handleChange}
-                            />
-                            {errors.startDate && <p className="text-danger">{errors.startDate}</p>}
-                        </div>
+            <Col span={12}>
+              <Form.Item
+                label="Offer Code"
+                name="offerCode"
+                rules={[
+                  { required: true, message: "Offer code is required" },
+                  {
+                    pattern: /^[A-Z0-9]{3,10}$/,
+                    message: "3-10 uppercase letters or numbers",
+                  },
+                ]}
+              >
+                <Input placeholder="Enter offer code" />
+              </Form.Item>
+            </Col>
 
-                        <div className="mb-3">
-                            <label className="form-label">End Date</label>
-                            <input
-                                type="date"
-                                className="form-control"
-                                name="endDate"
-                                value={formData.endDate}
-                                onChange={handleChange}
-                            />
-                            {errors.endDate && <p className="text-danger">{errors.endDate}</p>}
-                        </div>
+            <Col span={8}>
+              <Form.Item
+                label="Discount (%)"
+                name="discount"
+                rules={[
+                  { required: true, message: "Discount is required" },
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 100,
+                    message: "Discount must be between 1 and 100",
+                  },
+                ]}
+              >
+                <InputNumber style={{ width: "100%" }} min={1} max={100} />
+              </Form.Item>
+            </Col>
 
-                        <button type="submit" className="btn btn-primary">Update Offer</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    );
+            <Col span={8}>
+              <Form.Item
+                label="Maximum Discount Amount"
+                name="maxDiscount"
+                rules={[
+                  { required: true, message: "Maximum discount is required" },
+                ]}
+              >
+                <InputNumber style={{ width: "100%" }} min={1} />
+              </Form.Item>
+            </Col>
+
+            <Col span={8}>
+              <Form.Item
+                label="Minimum Order Amount"
+                name="minimumOrder"
+                rules={[
+                  { required: true, message: "Minimum order is required" },
+                ]}
+              >
+                <InputNumber style={{ width: "100%" }} min={1} />
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item
+                label="Start Date"
+                name="startDate"
+                rules={[{ required: true, message: "Start date is required" }]}
+              >
+                <DatePicker style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+
+            <Col span={12}>
+              <Form.Item
+                label="End Date"
+                name="endDate"
+                rules={[
+                  { required: true, message: "End date is required" },
+                  { validator: validateEndDate },
+                ]}
+              >
+                <DatePicker style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              {loading ? "Updating..." : "Update Offer"}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  );
 };
 
 export default UpdateOffer;

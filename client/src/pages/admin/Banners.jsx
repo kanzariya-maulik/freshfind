@@ -1,166 +1,161 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
+import {
+  Table,
+  Button,
+  Image,
+  Typography,
+  Row,
+  Col,
+  message,
+  Breadcrumb,
+} from "antd";
+import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import axios from "axios";
-import DataTable from "react-data-table-component";
+
+const { Title } = Typography;
 
 const Banners = () => {
-    const [banners, setBanners] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const [banners, setBanners] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchBanners = async () => {
-            try {
-                const response = await axios.get("http://localhost:8000/banners");
-                setBanners(response.data);
-            } catch (error) {
-                console.error("Error fetching banners:", error);
-                Swal.fire("Error", "Failed to fetch banners. Please try again later.", "error");
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchBanners();
-    }, []);
-
-    const handleDelete = async (banner) => {
-        Swal.fire({
-            title: "Confirm Deletion",
-            text: "Are you sure you want to delete this banner? This action cannot be undone.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#d33",
-            cancelButtonColor: "#6c757d",
-            confirmButtonText: "Delete",
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                try {
-                    await axios.delete(`http://localhost:8000/banners/${banner._id}`);
-                    setBanners(prev => prev.filter(b => b._id !== banner._id));
-                    Swal.fire("Deleted!", "Banner deleted successfully.", "success");
-                } catch (error) {
-                    Swal.fire("Error", "Failed to delete the banner. Please try again.", "error");
-                }
-            }
-        });
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/banners");
+        setBanners(response.data);
+      } catch (error) {
+        console.error(error);
+        message.error("Failed to fetch banners.");
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    
+    fetchBanners();
+  }, []);
 
-    if (loading) return <div>Loading banners...</div>;
+  const handleDelete = async (bannerId) => {
+    try {
+      await axios.delete(`http://localhost:8000/banners/${bannerId}`);
+      setBanners((prev) => prev.filter((b) => b._id !== bannerId));
+      message.success("Banner deleted successfully!");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to delete the banner.");
+    }
+  };
 
-    const freeDeliveryBanners = banners.filter(b => b.type === "freeDelivery");
-    const firstOrderBanners = banners.filter(b => b.type === "firstOrder");
-    const sliderBanners = banners.filter(b => b.type === "slider");
+  const freeDeliveryBanners = banners.filter((b) => b.type === "freeDelivery");
+  const firstOrderBanners = banners.filter((b) => b.type === "firstOrder");
+  const sliderBanners = banners.filter((b) => b.type === "slider");
 
-    const sliderColumns = [
-        {
-            name: "Image",
-            cell: row => <img src={row.bannerImage} alt="banner" width="150" />,
-        },
-        {
-            name: "View Order",
-            selector: row => row.viewOrder,
-            sortable: true,
-        },
-        {
-            name: "Actions",
-            cell: row => (
-                <>
-                    <Link to={`/admin/update-banner/${row._id}`} className="btn btn-secondary btn-sm ms-2">Edit</Link>
-                    <button className="btn btn-danger btn-sm ms-2" onClick={() => handleDelete(row)}>
-                        Delete
-                    </button>
-                </>
-            ),
-        },
-    ];
-
-    return (
-        <div>
-            <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-                <div>
-                    <h1 className="mt-4">Banner Management</h1>
-                    <ol className="breadcrumb mb-4">
-                        <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                        <li className="breadcrumb-item active">Banners</li>
-                    </ol>
-                </div>
-                <Link to="/admin/add-banner" className="btn btn-primary text-nowrap">Add Banner</Link>
-            </div>
-
-            {/* Free Delivery Banners */}
-            <div className="row">
-                <div className="col-md-6 col-12">
-                <h5>Free Delivery Banners</h5>
-                {freeDeliveryBanners.map((banner) => (
-                    <div className="col-12" key={banner._id}>
-                        <h5>{banner.label}</h5>
-                        <table className="table border text-nowrap">
-                            <thead className="table-light">
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <img src={banner.bannerImage} alt={banner.label} width="200" />
-                                    </td>
-                                    <td>
-                                        <Link className="btn btn-secondary btn-sm ms-2" to={`/admin/update-banner/${banner._id}`}>Edit</Link>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                ))}
-                </div>
-                <div className="col-md-6 col-12">
-                <h5>First Order Banners</h5>
-                {firstOrderBanners.map((banner) => (
-                    <div className="col-12" key={banner._id}>
-                        <h5>{banner.label}</h5>
-                        <table className="table border text-nowrap">
-                            <thead className="table-light">
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <img src={banner.bannerImage} alt={banner.label} width="200" />
-                                    </td>
-                                    <td>
-                                        <Link className="btn btn-secondary btn-sm ms-2" to={`/admin/update-banner/${banner._id}`}>Edit</Link>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                ))}
-                </div>
-            </div>
-
-           
-            {/* Slider Banners with DataTable */}
-            <div className="mt-5">
-                <h5>Banners for Slider</h5>
-                <DataTable
-                    columns={sliderColumns}
-                    data={sliderBanners}
-                    pagination
-                    highlightOnHover
-                    responsive
-                    striped
-                />
-            </div>
+  const sliderColumns = [
+    {
+      title: "Image",
+      dataIndex: "bannerImage",
+      key: "image",
+      render: (url) => <Image width={150} src={url} />,
+    },
+    {
+      title: "View Order",
+      dataIndex: "viewOrder",
+      key: "viewOrder",
+      sorter: (a, b) => a.viewOrder - b.viewOrder,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link to={`/admin/update-banner/${record._id}`}>
+            <Button type="default" icon={<EditOutlined />}>
+              Edit
+            </Button>
+          </Link>
+          <Button
+            type="primary"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record._id)}
+          >
+            Delete
+          </Button>
         </div>
-    );
+      ),
+    },
+  ];
+
+  const renderBannerTable = (bannersArray) => (
+    <Table
+      dataSource={bannersArray}
+      rowKey="_id"
+      pagination={false}
+      columns={[
+        {
+          title: "Image",
+          dataIndex: "bannerImage",
+          key: "image",
+          render: (url) => <Image width={200} src={url} />,
+        },
+        {
+          title: "Actions",
+          key: "actions",
+          render: (_, record) => (
+            <Link to={`/admin/update-banner/${record._id}`}>
+              <Button type="default" icon={<EditOutlined />}>
+                Edit
+              </Button>
+            </Link>
+          ),
+        },
+      ]}
+    />
+  );
+
+  return (
+    <div>
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
+        <Col>
+          <Title level={3}>Banner Management</Title>
+          <Breadcrumb>
+            <Breadcrumb.Item>
+              <Link to="/admin">Dashboard</Link>
+            </Breadcrumb.Item>
+            <Breadcrumb.Item>Banners</Breadcrumb.Item>
+          </Breadcrumb>
+        </Col>
+        <Col>
+          <Link to="/admin/add-banner">
+            <Button type="primary" icon={<PlusOutlined />}>
+              Add Banner
+            </Button>
+          </Link>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col xs={24} md={12}>
+          <Title level={5}>Free Delivery Banners</Title>
+          {renderBannerTable(freeDeliveryBanners)}
+        </Col>
+        <Col xs={24} md={12}>
+          <Title level={5}>First Order Banners</Title>
+          {renderBannerTable(firstOrderBanners)}
+        </Col>
+      </Row>
+
+      <div style={{ marginTop: 32 }}>
+        <Title level={5}>Slider Banners</Title>
+        <Table
+          dataSource={sliderBanners}
+          rowKey="_id"
+          loading={loading}
+          columns={sliderColumns}
+          pagination={{ pageSize: 5 }}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default Banners;

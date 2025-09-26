@@ -1,133 +1,137 @@
-import { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Input, Button, Typography, Spin, notification } from "antd";
 import axios from "axios";
 
+const { Title, Text } = Typography;
+
 const OtpVerification = () => {
-    // Get the email from localStorage where it was stored
-    const email = localStorage.getItem("otpEmail");
+  const email = localStorage.getItem("otpEmail");
+  const savedTimeLeft = localStorage.getItem("timeLeft") || 60;
 
-    // Get the remaining time from localStorage if available
-    const savedTimeLeft = localStorage.getItem("timeLeft") || 60;
-    const [otp, setOtp] = useState("");
-    const [errors, setErrors] = useState({});
-    const [timeLeft, setTimeLeft] = useState(parseInt(savedTimeLeft));
-    const [resendEnabled, setResendEnabled] = useState(false);
-    const navigate = useNavigate();
+  const [otp, setOtp] = useState("");
+  const [errors, setErrors] = useState("");
+  const [timeLeft, setTimeLeft] = useState(parseInt(savedTimeLeft));
+  const [resendEnabled, setResendEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-    // Countdown Timer
-    useEffect(() => {
-        if (timeLeft <= 0) {
-            setResendEnabled(true);
-            return;
-        }
-        const countdown = setInterval(() => {
-            setTimeLeft((prevTime) => {
-                const newTime = prevTime - 1;
-                localStorage.setItem("timeLeft", newTime);  // Save updated time to localStorage
-                return newTime;
-            });
-        }, 1000);
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setResendEnabled(true);
+      return;
+    }
 
-        return () => clearInterval(countdown);
-    }, [timeLeft]);
+    const countdown = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        const newTime = prevTime - 1;
+        localStorage.setItem("timeLeft", newTime);
+        return newTime;
+      });
+    }, 1000);
 
-    // OTP Validation
-    const validateOtp = (value) => {
-        if (!value.trim()) return "OTP is required.";
-        if (value.length !== 6 || isNaN(value)) return "Enter a valid 6-digit OTP.";
-        return null;
-    };
+    return () => clearInterval(countdown);
+  }, [timeLeft]);
 
-    // Handle OTP Input Change
-    const handleOtpChange = (e) => {
-        const value = e.target.value;
-        setOtp(value);
-        setErrors({ otp: validateOtp(value) });
-    };
+  const validateOtp = (value) => {
+    if (!value.trim()) return "OTP is required.";
+    if (value.length !== 6 || isNaN(value)) return "Enter a valid 6-digit OTP.";
+    return null;
+  };
 
-    // Handle Form Submission
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        const error = validateOtp(otp);
-        if (error) {
-            setErrors({ otp: error });
-            return;
-        }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const error = validateOtp(otp);
+    if (error) {
+      setErrors(error);
+      return;
+    }
 
-        try {
-            const response = await axios.post("http://localhost:8000/users/verify-otp", {
-                email,
-                otp,
-            });
-            if (response.data.message === "OTP verified") {
-                navigate("/reset-password");
-            } else {
-                setErrors({ otp: "Invalid OTP, please try again." });
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || "Something went wrong. Please try again.";
-            setErrors({ otp: msg });
-        }
-    };
+    setErrors("");
+    setLoading(true);
 
-    // Handle Resend OTP
-    const handleResendOtp = async () => {
-        setTimeLeft(60);
-        setResendEnabled(false);
-        localStorage.setItem("timeLeft", 60);  // Reset timeLeft in localStorage
+    try {
+      const response = await axios.post("http://localhost:8000/users/verify-otp", {
+        email,
+        otp,
+      });
 
-        try {
-            // Send OTP resend request to backend
-            const response = await axios.post("http://localhost:8000/users/send-otp", {
-                email,
-            });
+      if (response.data.message === "OTP verified") {
+        notification.success({ message: "OTP verified successfully!" });
+        navigate("/reset-password");
+      } else {
+        setErrors("Invalid OTP, please try again.");
+      }
+    } catch (err) {
+      setErrors(err.response?.data?.message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            if (response.data.message === "OTP resent successfully") {
-                toast.info("OTP resent successfully!");
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || "Something went wrong while resending OTP.";
-            toast.error(msg);
-        }
-    };
+  const handleResendOtp = async () => {
+    setTimeLeft(60);
+    setResendEnabled(false);
+    localStorage.setItem("timeLeft", 60);
 
-    return (
-        <div className="container">
-            <div className="row p-3 g-3 justify-content-center">
-                <div className="col-md-6">
-                    <div className="login-form d-flex flex-column justify-content-center h-100 align-items-center mt-4">
-                        <div className="mb-3 w-75">
-                            <h2 className="mb-3">Enter OTP</h2>
-                            <div className="mb-4">Enter the OTP we sent to your email</div>
-                            <div className="mb-2">OTP sent to: <small>{email}</small></div>
-                            <form onSubmit={handleSubmit}>
-                                <input
-                                    type="number"
-                                    name="otp"
-                                    className="w-100"
-                                    placeholder="Enter OTP"
-                                    value={otp}
-                                    onChange={handleOtpChange}
-                                />
-                                <p className="error mb-4">{errors.otp}</p>
-                                <input type="submit" value="Verify" className="btn-msg w-100" />
-                            </form>
-                            <div className="mt-4 text-center">
-                                {timeLeft > 0 ? (
-                                    <div className="text-danger">Resend OTP in {timeLeft} seconds</div>
-                                ) : (
-                                    <button onClick={handleResendOtp} className="otp ms-2" disabled={!resendEnabled}>
-                                        Resend OTP
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    try {
+      const response = await axios.post("http://localhost:8000/users/send-otp", { email });
+      if (response.data.message === "OTP resent successfully") {
+        notification.info({ message: "OTP resent successfully!" });
+      }
+    } catch (err) {
+      notification.error({
+        message: err.response?.data?.message || "Something went wrong while resending OTP.",
+      });
+    }
+  };
+
+  return (
+    <div className="container">
+      <div className="row justify-content-center mt-5">
+        <div className="col-md-6">
+          <div className="login-form d-flex flex-column align-items-center">
+            <div className="mb-3 w-100">
+              <Title level={3}>Enter OTP</Title>
+              <Text>Enter the OTP we sent to your email</Text>
+              <Text className="d-block mt-2">OTP sent to: <small>{email}</small></Text>
+
+              <form onSubmit={handleSubmit} className="mt-3">
+                <Input
+                  type="number"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  disabled={loading}
+                />
+                {errors && <Text type="danger">{errors}</Text>}
+
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  block
+                  className="mt-3"
+                  disabled={loading}
+                >
+                  {loading ? <Spin /> : "Verify"}
+                </Button>
+              </form>
+
+              <div className="mt-4 text-center">
+                {timeLeft > 0 ? (
+                  <Text type="secondary">Resend OTP in {timeLeft} seconds</Text>
+                ) : (
+                  <Button type="link" onClick={handleResendOtp} disabled={!resendEnabled}>
+                    Resend OTP
+                  </Button>
+                )}
+              </div>
             </div>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default OtpVerification;

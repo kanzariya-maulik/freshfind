@@ -1,158 +1,101 @@
-import React, { useState } from 'react';
-import { toast } from 'react-toastify';
-import axios from 'axios';
+import React, { useState } from "react";
+import { Form, Input, Button, message } from "antd";
+import axios from "axios";
 
-const UpdatePasswordForm = ({email}) => {
-    const [formData, setFormData] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
+const UpdatePasswordForm = ({ email }) => {
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-
-        const error = validateField(name, value);
-        setErrors(prevErrors => ({ ...prevErrors, [name]: error }));
-    };
-
-    const validateField = (name, value) => {
-        let error = null;
-        const maxLength = 20;
-
-        switch (name) {
-            case 'currentPassword':
-                if (!value.trim())
-                    error = "Current password is required";
-                else if (value.length < 6)
-                    error = "Password must be at least 6 characters long";
-                else if (value.length > maxLength)
-                    error = `Password must not exceed ${maxLength} characters`;
-                break;
-
-            case 'newPassword':
-                if (!value.trim())
-                    error = "New password is required";
-                else if (value.length < 6)
-                    error = "Password must be at least 6 characters long";
-                else if (value.length > maxLength)
-                    error = `Password must not exceed ${maxLength} characters`;
-                else if (value === formData.currentPassword)
-                    error = "New password cannot be the same as the current password";
-                break;
-
-            case 'confirmPassword':
-                if (!value.trim())
-                    error = "Confirm password is required";
-                else if (value.length > maxLength)
-                    error = `Password must not exceed ${maxLength} characters`;
-                else if (value !== formData.newPassword)
-                    error = "Passwords do not match";
-                break;
-
-            default:
-                break;
+  const handleSubmit = async (values) => {
+    setLoading(true);
+    try {
+      const response = await axios.put(
+        "http://localhost:8000/users/update-password",
+        {
+          email,
+          currentPassword: values.currentPassword,
+          newPassword: values.newPassword,
         }
+      );
 
-        return error;
-    };
+      if (response.data.message === "Password updated successfully") {
+        message.success("Password updated successfully!");
+        form.resetFields();
+      } else {
+        message.error(response.data.message || "Failed to update password.");
+      }
+    } catch (err) {
+      message.error(err.response?.data?.message || "Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+  const validateNewPassword = (_, value) => {
+    if (!value) return Promise.reject("New password is required");
+    if (value.length < 6)
+      return Promise.reject("Password must be at least 6 characters");
+    if (value.length > 20)
+      return Promise.reject("Password must not exceed 20 characters");
+    if (value === form.getFieldValue("currentPassword"))
+      return Promise.reject("New password cannot be same as current password");
+    return Promise.resolve();
+  };
 
-        const formErrors = {};
-        Object.keys(formData).forEach(field => {
-            const error = validateField(field, formData[field]);
-            if (error) formErrors[field] = error;
-        });
+  return (
+    <Form
+      form={form}
+      layout="vertical"
+      onFinish={handleSubmit}
+      style={{ maxWidth: 400 }}
+    >
+      <Form.Item
+        label="Current Password"
+        name="currentPassword"
+        rules={[
+          { required: true, message: "Current password is required" },
+          { min: 6, message: "Password must be at least 6 characters" },
+          { max: 20, message: "Password must not exceed 20 characters" },
+        ]}
+      >
+        <Input.Password placeholder="Current password" />
+      </Form.Item>
 
-        if (Object.values(formErrors).some(error => error)) {
-            setErrors(formErrors);
-            return;
-        }
+      <Form.Item
+        label="New Password"
+        name="newPassword"
+        rules={[{ validator: validateNewPassword }]}
+      >
+        <Input.Password placeholder="New password" />
+      </Form.Item>
 
-        setErrors({});
-        setLoading(true);
+      <Form.Item
+        label="Confirm Password"
+        name="confirmPassword"
+        dependencies={["newPassword"]}
+        rules={[
+          { required: true, message: "Confirm password is required" },
+          ({ getFieldValue }) => ({
+            validator(_, value) {
+              if (!value) return Promise.reject("Confirm password is required");
+              if (value !== getFieldValue("newPassword")) {
+                return Promise.reject("Passwords do not match");
+              }
+              return Promise.resolve();
+            },
+          }),
+        ]}
+      >
+        <Input.Password placeholder="Confirm password" />
+      </Form.Item>
 
-        try {
-            const response = await axios.put("http://localhost:8000/users/update-password", {
-                email,
-                currentPassword: formData.currentPassword,
-                newPassword: formData.newPassword
-            });
-
-            if (response.data.message === "Password updated successfully") {
-                toast.success("Password updated successfully!");
-                setFormData({
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: ''
-                });
-            } else {
-                toast.error(response.data.message || "Failed to update password.");
-            }
-        } catch (err) {
-            const msg = err.response?.data?.message || "Something went wrong.";
-            toast.error(msg);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div>
-            <form className="edit-profile form" onSubmit={handleSubmit}>
-                <div className="row g-2">
-                    <div className="col-12">
-                        <label className="form-label d-block">Current Password</label>
-                        <input
-                            type="password"
-                            name="currentPassword"
-                            className="w-100"
-                            placeholder="Current password"
-                            value={formData.currentPassword}
-                            onChange={handleChange}
-                        />
-                        <p className="error mb-2">{errors.currentPassword}</p>
-
-                        <label className="form-label d-block mt-1">New Password</label>
-                        <input
-                            type="password"
-                            name="newPassword"
-                            className="w-100 "
-                            placeholder="New password"
-                            value={formData.newPassword}
-                            onChange={handleChange}
-                        />
-                        <p className="error mb-2">{errors.newPassword}</p>
-
-                        <label className="form-label d-block mt-1">Confirm Password</label>
-                        <input
-                            type="password"
-                            name="confirmPassword"
-                            className="w-100"
-                            placeholder="Confirm password"
-                            value={formData.confirmPassword}
-                            onChange={handleChange}
-                        />
-                        <p className="error mb-2">{errors.confirmPassword}</p>
-                    </div>
-                </div>
-                <div className="d-flex justify-content-end">
-                    <input
-                        type="submit"
-                        name="change"
-                        value={loading ? "Loading..." : "Change Password"}
-                        className="btn-msg mt-2"
-                        disabled={loading}
-                    />
-                </div>
-            </form>
-        </div>
-    );
+      <Form.Item>
+        <Button type="primary" htmlType="submit" loading={loading}>
+          Change Password
+        </Button>
+      </Form.Item>
+    </Form>
+  );
 };
 
 export default UpdatePasswordForm;

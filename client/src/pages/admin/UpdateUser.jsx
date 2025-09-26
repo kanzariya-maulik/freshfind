@@ -1,228 +1,183 @@
-import { useState, useEffect } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import React, { useEffect, useState } from "react";
+import { Form, Input, Button, Upload, Card, message } from "antd";
+import { UploadOutlined } from "@ant-design/icons";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import axios from "axios";
 
 const UpdateUser = () => {
-    const { id } = useParams();
-    const [formData, setFormData] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        password: "",
-        userImage: null // Can be a string (URL) or File
-    });
+  const [form] = Form.useForm();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [userImage, setUserImage] = useState(null); // For preview
 
-    const [errors, setErrors] = useState({});
-    const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/users/${id}`);
+        const user = res.data;
 
-    useEffect(() => {
-        const fetchUserData = async () => {
-            try {
-                const response = await axios.get(`http://localhost:8000/users/${id}`);
-                setFormData({
-                    firstName: response.data.firstName,
-                    lastName: response.data.lastName,
-                    email: response.data.email,
-                    phone: response.data.mobile,
-                    password: response.data.password,
-                    userImage: response.data.profilePicture // string URL from backend
-                });
-            } catch (error) {
-                toast.error("Failed to load user data.");
-            }
-        };
-
-        fetchUserData();
-    }, [id]);
-
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        setErrors({ ...errors, [name]: validateField(name, value) });
-    };
-
-    const validateField = (name, value) => {
-        if (!value.trim()) return `${name} is required.`;
-
-        switch (name) {
-            case "firstName":
-            case "lastName":
-                if (value.length < 2) return `${name} must be at least 2 characters.`;
-                if (value.length > 50) return `${name} cannot exceed 50 characters.`;
-                if (!/^[A-Za-z\s]+$/.test(value)) return `${name} must contain only letters.`;
-                break;
-            case "email":
-                if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value)) return "Invalid email format.";
-                break;
-            case "phone":
-                if (!/^\d{10}$/.test(value)) return "Phone number must be exactly 10 digits.";
-                break;
-            case "password":
-                if (value.length < 6) return "Password must be at least 6 characters.";
-                break;
-            default:
-                return null;
-        }
-
-        return null;
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setFormData({ ...formData, userImage: file });
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        const formErrors = {};
-        Object.keys(formData).forEach((field) => {
-            if (field !== "userImage") {
-                const error = validateField(field, formData[field]);
-                if (error) formErrors[field] = error;
-            }
+        form.setFieldsValue({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.mobile,
+          password: user.password,
         });
 
-        if (Object.keys(formErrors).length > 0) {
-            setErrors(formErrors);
-            return;
-        }
-
-        try {
-            setLoading(true);
-
-            const submission = new FormData();
-            submission.append("firstName", formData.firstName);
-            submission.append("lastName", formData.lastName);
-            submission.append("email", formData.email);
-            submission.append("mobile", formData.phone);
-            submission.append("password", formData.password);
-            if (formData.userImage && typeof formData.userImage !== "string") {
-                submission.append("profilePicture", formData.userImage);
-            }
-
-            await axios.put(`http://localhost:8000/users/${id}`, submission, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
-            });
-
-            toast.success("User updated successfully!");
-            navigate("/admin/users");
-        } catch (error) {
-            toast.error("Failed to update user.");
-        } finally {
-            setLoading(false);
-        }
+        setUserImage(user.profilePicture); // string URL
+      } catch (err) {
+        message.error("Failed to load user data.");
+        console.error(err);
+      }
     };
 
-    return (
-        <div>
-            <h1 className="mt-4">Update User</h1>
-            <ol className="breadcrumb mb-4">
-                <li className="breadcrumb-item"><Link to="/admin/">Dashboard</Link></li>
-                <li className="breadcrumb-item"><Link to="/admin/users">Users</Link></li>
-                <li className="breadcrumb-item active">Update User</li>
-            </ol>
+    fetchUser();
+  }, [id, form]);
 
-            <div className="card mb-4">
-                <div className="card-body">
-                    <form onSubmit={handleSubmit}>
-                        <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">First Name</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    name="firstName"
-                                    value={formData.firstName}
-                                    onChange={handleChange}
-                                />
-                                {errors.firstName && <p className="text-danger">{errors.firstName}</p>}
-                            </div>
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Last Name</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    name="lastName"
-                                    value={formData.lastName}
-                                    onChange={handleChange}
-                                />
-                                {errors.lastName && <p className="text-danger">{errors.lastName}</p>}
-                            </div>
-                        </div>
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("firstName", values.firstName);
+      formData.append("lastName", values.lastName);
+      formData.append("email", values.email);
+      formData.append("mobile", values.phone);
+      formData.append("password", values.password);
 
-                        <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Email</label>
-                                <input
-                                    type="email"
-                                    className="form-control"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleChange}
-                                />
-                                {errors.email && <p className="text-danger">{errors.email}</p>}
-                            </div>
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Phone</label>
-                                <input
-                                    type="tel"
-                                    className="form-control"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleChange}
-                                />
-                                {errors.phone && <p className="text-danger">{errors.phone}</p>}
-                            </div>
-                        </div>
+      if (values.userImage && values.userImage.file) {
+        formData.append("profilePicture", values.userImage.file);
+      }
 
-                        <div className="row">
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">Password</label>
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleChange}
-                                />
-                                {errors.password && <p className="text-danger">{errors.password}</p>}
-                            </div>
-                            <div className="col-md-6 mb-3">
-                                <label className="form-label">User Image</label>
-                                <input
-                                    type="file"
-                                    className="form-control"
-                                    onChange={handleFileChange}
-                                    accept="image/*"
-                                />
-                                {typeof formData.userImage === "string" && (
-                                    <img
-                                        src={formData.userImage}
-                                        alt="User"
-                                        height="150px"
-                                        width="150px"
-                                        className="mt-2"
-                                    />
-                                )}
-                            </div>
-                        </div>
+      await axios.put(`http://localhost:8000/users/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
 
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
-                            {loading ? "Updating..." : "Update User"}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    );
+      message.success("User updated successfully!");
+      navigate("/admin/users");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to update user.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const normFile = (e) => {
+    if (Array.isArray(e)) return e;
+    return e && e.fileList[0];
+  };
+
+  return (
+    <div>
+      <h1 className="mt-4">Update User</h1>
+      <ol className="breadcrumb mb-4">
+        <li className="breadcrumb-item">
+          <Link to="/admin">Dashboard</Link>
+        </li>
+        <li className="breadcrumb-item">
+          <Link to="/admin/users">Users</Link>
+        </li>
+        <li className="breadcrumb-item active">Update User</li>
+      </ol>
+
+      <Card>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+          initialValues={{
+            firstName: "",
+            lastName: "",
+            email: "",
+            phone: "",
+            password: "",
+          }}
+        >
+          <Form.Item
+            name="firstName"
+            label="First Name"
+            rules={[
+              { required: true, message: "First name is required" },
+              { min: 2, message: "First name must be at least 2 characters" },
+              { max: 50, message: "Cannot exceed 50 characters" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="lastName"
+            label="Last Name"
+            rules={[
+              { required: true, message: "Last name is required" },
+              { min: 2, message: "Last name must be at least 2 characters" },
+              { max: 50, message: "Cannot exceed 50 characters" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: "Email is required" },
+              { type: "email", message: "Invalid email format" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="phone"
+            label="Phone"
+            rules={[
+              { required: true, message: "Phone is required" },
+              { pattern: /^\d{10}$/, message: "Phone must be 10 digits" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+
+          <Form.Item
+            name="password"
+            label="Password"
+            rules={[
+              { required: true, message: "Password is required" },
+              { min: 6, message: "Password must be at least 6 characters" },
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+
+          <Form.Item
+            name="userImage"
+            label="User Image"
+            valuePropName="fileList"
+            getValueFromEvent={normFile}
+          >
+            <Upload
+              beforeUpload={() => false} // prevent auto upload
+              listType="picture"
+              accept="image/*"
+            >
+              <Button icon={<UploadOutlined />}>Select Image</Button>
+            </Upload>
+            {userImage && typeof userImage === "string" && (
+              <img src={userImage} alt="User" height="150" className="mt-2" />
+            )}
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Update User
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  );
 };
 
 export default UpdateUser;

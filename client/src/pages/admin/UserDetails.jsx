@@ -1,6 +1,6 @@
 import React, { useState } from "react";
+import { Card, Row, Col, Button, Table, Tag, Popconfirm, message } from "antd";
 import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
 
 const UserDetails = () => {
   const user = {
@@ -12,8 +12,10 @@ const UserDetails = () => {
   };
 
   const [status, setStatus] = useState(user.Active_Status);
+
   const orders = [
     {
+      key: "1001",
       Order_Id: "1001",
       Order_Date: "2025-03-10",
       Total_Quantity: 3,
@@ -21,6 +23,7 @@ const UserDetails = () => {
       Order_Status: "Delivered",
     },
     {
+      key: "1002",
       Order_Id: "1002",
       Order_Date: "2025-03-11",
       Total_Quantity: 2,
@@ -30,118 +33,142 @@ const UserDetails = () => {
   ];
 
   const handleStatusChange = (newStatus) => {
-    Swal.fire({
-      title: newStatus ? "Activate Account?" : "Deactivate Account?",
-      text: newStatus ? "Are you sure you want to activate this account?" : "Are you sure you want to deactivate this account? This action cannot be undone.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: newStatus ? "#28a745" : "#dc3545",
-      cancelButtonColor: "#6c757d",
-      confirmButtonText: newStatus ? "Activate" : "Deactivate",
-    }).then((result) => {
-      if (result.isConfirmed) {
+    const action = newStatus ? "Activate" : "Deactivate";
+    Popconfirm.confirm({
+      title: `${action} Account?`,
+      description: `Are you sure you want to ${action.toLowerCase()} this account?`,
+      onConfirm: () => {
         setStatus(newStatus);
-        Swal.fire(
-          newStatus ? "Activated!" : "Deactivated!",
-          `The account has been ${newStatus ? "activated" : "deactivated"}.`,
-          "success"
+        message.success(
+          `Account ${newStatus ? "activated" : "deactivated"} successfully!`
         );
-      }
+      },
     });
   };
-   const handleDelete = () => {
-          Swal.fire({
-              title: "Are you sure?",
-              text: `Do you want to delete this order? This action cannot be undone!`,
-              icon: "warning",
-              showCancelButton: true,
-              confirmButtonColor: "#d33",
-              cancelButtonColor: "#3085d6",
-              confirmButtonText: "Yes, delete it!",
-          }).then((result) => {
-              if (result.isConfirmed) {
-                  Swal.fire("Deleted!", "order has been removed.", "success");
-              }
-          });
-      };
+
+  const handleDelete = (orderId) => {
+    message.warning(`Deleted order ${orderId} successfully!`);
+  };
+
+  const columns = [
+    {
+      title: "Order ID",
+      dataIndex: "Order_Id",
+      key: "Order_Id",
+    },
+    {
+      title: "Order Date",
+      dataIndex: "Order_Date",
+      key: "Order_Date",
+    },
+    {
+      title: "Quantity",
+      dataIndex: "Total_Quantity",
+      key: "Total_Quantity",
+    },
+    {
+      title: "Total Price",
+      dataIndex: "Total_Price",
+      key: "Total_Price",
+      render: (price) => `₹${price.toFixed(2)}`,
+    },
+    {
+      title: "Order Status",
+      dataIndex: "Order_Status",
+      key: "Order_Status",
+      render: (status) => {
+        let color = "blue";
+        if (status === "Delivered") color = "green";
+        else if (status === "Pending") color = "orange";
+        return <Tag color={color}>{status}</Tag>;
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <>
+          <Link to={`/admin/view-order/${record.Order_Id}`}>
+            <Button type="primary" size="small" style={{ marginRight: 8 }}>
+              View
+            </Button>
+          </Link>
+          <Link to={`/admin/update-order/${record.Order_Id}`}>
+            <Button type="default" size="small" style={{ marginRight: 8 }}>
+              Edit
+            </Button>
+          </Link>
+          <Popconfirm
+            title="Are you sure to delete this order?"
+            onConfirm={() => handleDelete(record.Order_Id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="danger" size="small">
+              Delete
+            </Button>
+          </Popconfirm>
+        </>
+      ),
+    },
+  ];
 
   return (
     <div>
       <h1 className="mt-4">User Details</h1>
-      <ol className="breadcrumb mb-4">
-        <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-        <li className="breadcrumb-item active">User Details</li>
-      </ol>
 
-      <div className="card mb-4">
-        <div className="card-header">
-          <h4>User Information</h4>
-        </div>
-        <div className="card-body">
-          <div className="row">
-            <div className="col-md-6">
-              <p><strong>Username:</strong> {user.First_Name} {user.Last_Name}</p>
-              <p><strong>Email:</strong> {user.Email}</p>
-            </div>
-            <div className="col-md-6">
-              <p><strong>Phone Number:</strong> {user.Mobile_No}</p>
-              <p><strong>Status:</strong> {status === 1 ? "Active" : "Inactive"}</p>
-            </div>
-          </div>
-          <Link className="btn btn-primary mt-3" to="/admin/update-user">Edit User Info</Link>
-          {status === 1 ? (
-            <button className="btn btn-danger mt-3 ms-2" onClick={() => handleStatusChange(0)}>
-              Deactivate Account
-            </button>
-          ) : (
-            <button className="btn btn-success mt-3 ms-2" onClick={() => handleStatusChange(1)}>
-              Activate Account
-            </button>
-          )}
-        </div>
-      </div>
+      <Card title="User Information" className="mb-4">
+        <Row gutter={16}>
+          <Col span={12}>
+            <p>
+              <strong>Username:</strong> {user.First_Name} {user.Last_Name}
+            </p>
+            <p>
+              <strong>Email:</strong> {user.Email}
+            </p>
+          </Col>
+          <Col span={12}>
+            <p>
+              <strong>Phone Number:</strong> {user.Mobile_No}
+            </p>
+            <p>
+              <strong>Status:</strong> {status === 1 ? "Active" : "Inactive"}
+            </p>
+          </Col>
+        </Row>
+        <Link to="/admin/update-user">
+          <Button type="primary" style={{ marginRight: 8 }}>
+            Edit User Info
+          </Button>
+        </Link>
+        {status === 1 ? (
+          <Popconfirm
+            title="Deactivate Account?"
+            onConfirm={() => setStatus(0)}
+            okText="Deactivate"
+            cancelText="Cancel"
+          >
+            <Button type="danger">Deactivate Account</Button>
+          </Popconfirm>
+        ) : (
+          <Popconfirm
+            title="Activate Account?"
+            onConfirm={() => setStatus(1)}
+            okText="Activate"
+            cancelText="Cancel"
+          >
+            <Button type="success">Activate Account</Button>
+          </Popconfirm>
+        )}
+      </Card>
 
-      <div className="card mb-4">
-        <div className="card-header">
-          <h4>User Orders</h4>
-        </div>
-        <div className="card-body">
-          <table className="table border text-nowrap">
-            <thead className="table-light">
-              <tr>
-                <th>Order ID</th>
-                <th>Order Date</th>
-                <th>Quantity</th>
-                <th>Total Price</th>
-                <th>Order Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.length > 0 ? (
-                orders.map((order) => (
-                  <tr key={order.Order_Id}>
-                    <td>{order.Order_Id}</td>
-                    <td>{order.Order_Date}</td>
-                    <td>{order.Total_Quantity}</td>
-                    <td>₹{order.Total_Price.toFixed(2)}</td>
-                    <td>{order.Order_Status}</td>
-                    <td>
-                      <Link to="/admin/view-order" className="btn btn-info btn-sm me-1">View</Link>
-                      <Link to="/admin/update-order" className="btn btn-primary btn-sm me-1">Edit</Link>
-                      <button className="btn btn-danger btn-sm" onClick={handleDelete}>Delete</button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="text-center">No orders found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Card title="User Orders">
+        <Table
+          columns={columns}
+          dataSource={orders}
+          pagination={{ pageSize: 5 }}
+        />
+      </Card>
     </div>
   );
 };

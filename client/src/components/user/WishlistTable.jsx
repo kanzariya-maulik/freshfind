@@ -1,50 +1,51 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { toast } from 'react-toastify';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEffect, useState } from "react";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { useAuth } from "../../contexts/AuthContext";
+import { Table, Button, Spin, Image } from "antd";
+import { ShoppingCartOutlined, DeleteOutlined } from "@ant-design/icons";
 
 const WishlistTable = ({ userId }) => {
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
   const [addingToCartId, setAddingToCartId] = useState(null);
-  const { updateCartCount,updateWishlistCount } = useAuth();
+  const { updateCartCount, updateWishlistCount } = useAuth();
 
   // Fetch wishlist
-const fetchWishlist = async () => {
-  try {
-    const res = await axios.get(`http://localhost:8000/wishlist/${userId}`);
-    const productIds = res.data?.wishlist?.productIds || [];
-    setWishlist(productIds);
-    updateWishlistCount(productIds.length);
-  } catch (error) {
-    console.error('Error fetching wishlist:', error);
-    toast.error("Failed to load wishlist.");
-  } finally {
-    setLoading(false);
-  }
-};
-
+  const fetchWishlist = async () => {
+    try {
+      const res = await axios.get(`http://localhost:8000/wishlist/${userId}`);
+      const productIds = res.data?.wishlist?.productIds || [];
+      setWishlist(productIds);
+      updateWishlistCount(productIds.length);
+    } catch (error) {
+      console.error("Error fetching wishlist:", error);
+      toast.error("Failed to load wishlist.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (userId) fetchWishlist();
   }, [userId]);
 
-  // Handle delete from wishlist
+  // Delete from wishlist
   const handleDelete = async (productId) => {
     try {
       await axios.delete(`http://localhost:8000/wishlist/${userId}/remove`, {
-        data: { productId }
+        data: { productId },
       });
       toast.success("Product removed from wishlist!");
-      setWishlist(prev => prev.filter(item => item._id !== productId));
-      updateWishlistCount(wishlist.length);
+      setWishlist((prev) => prev.filter((item) => item._id !== productId));
+      updateWishlistCount(wishlist.length - 1);
     } catch (error) {
       console.error("Error removing product from wishlist:", error);
       toast.error("Failed to remove product.");
     }
   };
 
-  // Handle add to cart
+  // Add to cart
   const handleAddToCart = async (productId) => {
     if (!userId) {
       toast.error("Please log in to add to cart.");
@@ -71,55 +72,74 @@ const fetchWishlist = async () => {
     }
   };
 
+  const columns = [
+    {
+      title: "Product",
+      dataIndex: "productName",
+      key: "product",
+      render: (_, item) => (
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <Image
+            src={item.productImage}
+            alt={item.productName}
+            width={60}
+            height={60}
+            style={{ objectFit: "cover", marginRight: 10 }}
+            preview={false}
+          />
+          <span>{item.productName}</span>
+        </div>
+      ),
+    },
+    {
+      title: "Price",
+      dataIndex: "salePrice",
+      key: "price",
+      render: (price) => `₹${price}`,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, item) => (
+        <div>
+          <Button
+            type="primary"
+            icon={<ShoppingCartOutlined />}
+            onClick={() => handleAddToCart(item._id)}
+            loading={addingToCartId === item._id}
+          >
+            {addingToCartId === item._id ? "Adding..." : "Add to Cart"}
+          </Button>
+          <Button
+            type="default"
+            icon={<DeleteOutlined />}
+            danger
+            onClick={() => handleDelete(item._id)}
+            style={{ marginLeft: 8 }}
+          >
+            Delete
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <table className="table cart-table text-nowrap">
-      <thead>
-        <tr className="heading text-center">
-          <th className='text-start'>Product</th>
-          <th>Price</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {loading ? (
-          <tr><td colSpan="3" className="text-center">Loading...</td></tr>
-        ) : wishlist.length > 0 ? (
-          wishlist.map((item) => (
-            <tr key={item._id}>
-              <td>
-                <img
-                  src={item.productImage}
-                  alt={item.productName}
-                  className="image-item d-inline-block"
-                  style={{ width: '60px', height: '60px', objectFit: 'cover', marginRight: '10px' }}
-                />
-                <div className="d-inline-block">{item.productName}</div>
-              </td>
-              <td>₹{item.salePrice}</td>
-              <td>
-                <button
-                  className="primary-btn update-btn"
-                  onClick={() => handleAddToCart(item._id)}
-                  disabled={addingToCartId === item._id}
-                >
-                  {addingToCartId === item._id ? "Adding..." : "Add to Cart"}
-                </button>
-                <button
-                  className="primary-btn delete-btn ms-2"
-                  onClick={() => handleDelete(item._id)}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="3" className="text-center">Your wishlist is empty.</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
+    <>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px 0" }}>
+          <Spin size="large" />
+        </div>
+      ) : (
+        <Table
+          dataSource={wishlist}
+          columns={columns}
+          rowKey={(item) => item._id}
+          pagination={false}
+          locale={{ emptyText: "Your wishlist is empty." }}
+        />
+      )}
+    </>
   );
 };
 

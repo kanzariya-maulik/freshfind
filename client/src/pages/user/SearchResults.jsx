@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import ProductList from "../../components/user/ProductList";
@@ -11,8 +11,9 @@ export default function SearchResults() {
   const [filters, setFilters] = useState({
     ratings: "",
     priceRange: "",
-    discount: ""
+    discount: "",
   });
+  const [appliedFilters, setAppliedFilters] = useState({}); // Filters applied to ProductList
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,11 +22,27 @@ export default function SearchResults() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Selected Filters:", filters);
+    setAppliedFilters(filters); // Apply filters
   };
 
-  const handleWishlistClick = () => {
+  const handleWishlistClick = (productId) => {
+    // You can integrate backend wishlist API here
     toast.success("Added to wishlist");
+  };
+
+  const priceMap = {
+    lt50: "Less than Rs 50",
+    "51to100": "Rs 51 to 100",
+    "101to200": "Rs 101 to 200",
+    "201to500": "Rs 201 to 500",
+    gt500: "More than Rs 500",
+  };
+
+  const discountMap = {
+    lt5: "Less than 5%",
+    "5to15": "5% to 15%",
+    "15to25": "15% to 25%",
+    gt25: "More than 25%",
   };
 
   return (
@@ -34,7 +51,9 @@ export default function SearchResults() {
       <div className="row align-items-center sitemap">
         <div className="col-6">
           <p className="mt-5">
-            <Link to="/" className="text-decoration-none dim link">Home</Link>
+            <Link to="/" className="text-decoration-none dim link">
+              Home
+            </Link>
             <span className="text-decoration-none dim link"> / Search</span>
           </p>
         </div>
@@ -49,15 +68,17 @@ export default function SearchResults() {
       </div>
 
       {/* Search Query Heading */}
-      <h2 className="mt-3">You searched for "<span className="text-primary">{query}</span>"</h2>
+      <h2 className="mt-3">
+        You searched for "<span className="text-primary">{query}</span>"
+      </h2>
 
       {/* Filters Section */}
       {filterVisible && (
         <form onSubmit={handleSubmit} method="post">
           <div className="border p-3 row" id="filter-section">
-            {/* Customer Ratings Section */}
+            {/* Customer Ratings */}
             <div className="col-6 col-sm-4 col-md-3 mb-2">
-              <h6 className="mb-2"><span>Customer Ratings</span></h6>
+              <h6 className="mb-2">Customer Ratings</h6>
               {[4, 3, 2, 1].map((rating) => (
                 <div className="text-nowrap" key={rating}>
                   <input
@@ -70,68 +91,64 @@ export default function SearchResults() {
                     onChange={handleChange}
                   />
                   <label htmlFor={`${rating}star`}>
-                    {rating} <i className="fa fa-star" aria-hidden="true"></i> and above
+                    {rating} <i className="fa fa-star" aria-hidden="true"></i>{" "}
+                    and above
                   </label>
                 </div>
               ))}
             </div>
 
-            {/* Price Section */}
+            {/* Price */}
             <div className="col-6 col-sm-4 col-md-3 mb-2">
-              <h6 className="mb-2"><span>Price</span></h6>
-              {["lt50", "51to100", "101to200", "201to500", "gt500"].map((price) => (
-                <div className="text-nowrap" key={price}>
+              <h6 className="mb-2">Price</h6>
+              {Object.keys(priceMap).map((key) => (
+                <div className="text-nowrap" key={key}>
                   <input
                     className="me-1"
                     type="radio"
                     name="priceRange"
-                    id={price}
-                    value={price}
-                    checked={filters.priceRange === price}
+                    id={key}
+                    value={key}
+                    checked={filters.priceRange === key}
                     onChange={handleChange}
                   />
-                  <label htmlFor={price}>
-                    {price === "lt50" ? "Less than Rs 50" :
-                      price === "51to100" ? "Rs 51 to 100" :
-                        price === "101to200" ? "Rs 101 to 200" :
-                          price === "201to500" ? "Rs 201 to 500" : "More than Rs 500"}
-                  </label>
+                  <label htmlFor={key}>{priceMap[key]}</label>
                 </div>
               ))}
             </div>
 
-            {/* Discount Section */}
+            {/* Discount */}
             <div className="col-6 col-sm-4 col-md-3 mb-2">
-              <h6 className="mb-2"><span>Discount</span></h6>
-              {["lt5", "5to15", "15to25", "gt25"].map((discount) => (
-                <div className="text-nowrap" key={discount}>
+              <h6 className="mb-2">Discount</h6>
+              {Object.keys(discountMap).map((key) => (
+                <div className="text-nowrap" key={key}>
                   <input
                     className="me-1"
                     type="radio"
                     name="discount"
-                    id={discount}
-                    value={discount}
-                    checked={filters.discount === discount}
+                    id={key}
+                    value={key}
+                    checked={filters.discount === key}
                     onChange={handleChange}
                   />
-                  <label htmlFor={discount}>
-                    {discount === "lt5" ? "Less than 5%" :
-                      discount === "5to15" ? "5% to 15%" :
-                        discount === "15to25" ? "15% to 25%" : "More than 25%"}
-                  </label>
+                  <label htmlFor={key}>{discountMap[key]}</label>
                 </div>
               ))}
             </div>
 
             <div className="col-6 col-sm-4 col-md-3 mb-2 d-flex align-items-end justify-content-end">
-              <input type="submit" value="Apply" name="filter-submit" className="primary-btn js-filter-btn" />
+              <input type="submit" value="Apply" className="primary-btn" />
             </div>
           </div>
         </form>
       )}
 
       {/* Product List */}
-      <ProductList />
+      <ProductList
+        searchQuery={query}
+        filters={appliedFilters}
+        onWishlistClick={handleWishlistClick}
+      />
     </div>
   );
 }

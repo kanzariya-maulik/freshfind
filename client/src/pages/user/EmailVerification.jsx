@@ -1,114 +1,101 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "react-toastify";
+import { Form, Input, Button, Typography, message, Row, Col, Card } from "antd";
+
+const { Title, Text } = Typography;
 
 const EmailVerification = () => {
-    const oldEmail = "old@example.com";
-    const newEmail = "new@example.com";
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        oldOtp: "",
-        newOtp: ""
-    });
-    const [errors, setErrors] = useState({});
-    const [timeLeft, setTimeLeft] = useState(60);
-    const [resendEnabled, setResendEnabled] = useState(false);
+  const oldEmail = "old@example.com";
+  const newEmail = "new@example.com";
+  const navigate = useNavigate();
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [resendEnabled, setResendEnabled] = useState(false);
+  const [form] = Form.useForm();
 
-    useEffect(() => {
-        if (timeLeft <= 0) {
-            setResendEnabled(true);
-            return;
-        }
-        const countdown = setInterval(() => {
-            setTimeLeft((prevTime) => prevTime - 1);
-        }, 1000);
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      setResendEnabled(true);
+      return;
+    }
+    const countdown = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
 
-        return () => clearInterval(countdown);
-    }, [timeLeft]);
+    return () => clearInterval(countdown);
+  }, [timeLeft]);
 
-    const validateOtp = (otp) => {
-        if (!otp.trim()) return "OTP is required.";
-        if (otp.length !== 6 || isNaN(otp)) return "Enter a valid 6-digit OTP.";
-        return null;
-    };
+  const handleResendOtp = () => {
+    setTimeLeft(60);
+    setResendEnabled(false);
+    message.info("OTP resent successfully!");
+  };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-        setErrors(prevErrors => ({ ...prevErrors, [name]: validateOtp(value) }));
-    };
+  const handleSubmit = (values) => {
+    navigate("/account", { state: { message: "Email updated successfully!" } });
+    message.success("Email updated successfully!");
+    form.resetFields();
+  };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const formErrors = {};
-        Object.keys(formData).forEach(field => {
-            const error = validateOtp(formData[field]);
-            if (error) formErrors[field] = error;
-        });
+  const otpRules = [
+    { required: true, message: "OTP is required" },
+    {
+      len: 6,
+      message: "OTP must be exactly 6 digits",
+    },
+    {
+      pattern: /^\d{6}$/,
+      message: "OTP must be numeric",
+    },
+  ];
 
-        if (Object.keys(formErrors).length > 0) {
-            setErrors(formErrors);
-            return;
-        }
+  return (
+    <Row justify="center" className="mt-5">
+      <Col xs={24} sm={20} md={12} lg={8}>
+        <Card>
+          <Title level={3} className="text-center mb-4">
+            Enter OTPs
+          </Title>
+          <Text className="mb-3 d-block text-center">
+            Enter OTPs for your old and new email addresses
+          </Text>
 
-        setErrors({});
-        navigate("/account", { state: { message: "Email updated successfully!" } });
-    };
+          <Form form={form} layout="vertical" onFinish={handleSubmit}>
+            <Form.Item
+              label={`Old Email: ${oldEmail}`}
+              name="oldOtp"
+              rules={otpRules}
+            >
+              <Input placeholder="OTP for Old Email" />
+            </Form.Item>
 
-    const handleResendOtp = () => {
-        setTimeLeft(60);
-        setResendEnabled(false);
-        toast.info("OTP resent successfully!");
-    };
+            <Form.Item
+              label={`New Email: ${newEmail}`}
+              name="newOtp"
+              rules={otpRules}
+            >
+              <Input placeholder="OTP for New Email" />
+            </Form.Item>
 
-    return (
-        <div className="container">
-            <div className="row p-3 g-3 justify-content-center">
-                <div className="col-md-6">
-                    <div className="login-form d-flex flex-column justify-content-center h-100 align-items-center mt-4">
-                        <div className="mb-3 w-75">
-                            <h2 className="mb-3">Enter OTPs</h2>
-                            <div className="mb-4">Enter OTPs for your old and new email</div>
-                            <form onSubmit={handleSubmit}>
-                                <div className="mb-3">Old Email: <small>{oldEmail}</small></div>
-                                <input 
-                                    type="text" 
-                                    name="oldOtp" 
-                                    className="w-100" 
-                                    placeholder="OTP for Old Email" 
-                                    value={formData.oldOtp} 
-                                    onChange={handleChange} 
-                                />
-                                <p className="error mb-3">{errors.oldOtp}</p>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" block>
+                Verify OTPs
+              </Button>
+            </Form.Item>
+          </Form>
 
-                                <div className="mb-3">New Email: <small>{newEmail}</small></div>
-                                <input 
-                                    type="text" 
-                                    name="newOtp" 
-                                    className="w-100" 
-                                    placeholder="OTP for New Email" 
-                                    value={formData.newOtp} 
-                                    onChange={handleChange} 
-                                />
-                                <p className="error mb-3">{errors.newOtp}</p>
-
-                                <input type="submit" value="Verify OTPs" className="btn-msg w-100" />
-                                <div className="mt-4 text-center">
-                                    {timeLeft > 0 ? (
-                                        <div className="text-danger">Resend OTP in {timeLeft} seconds</div>
-                                    ) : (
-                                        <button onClick={handleResendOtp} className="otp ms-2">
-                                            Resend OTP
-                                        </button>
-                                    )}
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+          <div className="text-center mt-3">
+            {timeLeft > 0 ? (
+              <Text type="danger">Resend OTP in {timeLeft} seconds</Text>
+            ) : (
+              <Button type="link" onClick={handleResendOtp}>
+                Resend OTP
+              </Button>
+            )}
+          </div>
+        </Card>
+      </Col>
+    </Row>
+  );
 };
 
 export default EmailVerification;

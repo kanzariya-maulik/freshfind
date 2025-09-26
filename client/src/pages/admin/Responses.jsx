@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
+import { Table, Input, Button, Space, Modal, message, Tag } from "antd";
+import { EditOutlined, DeleteOutlined, MailOutlined } from "@ant-design/icons";
 import axios from "axios";
-import DataTable from "react-data-table-component";
 
 const Responses = () => {
   const [responses, setResponses] = useState([]);
@@ -10,73 +10,54 @@ const Responses = () => {
   const [searchText, setSearchText] = useState("");
   const [selectedResponse, setSelectedResponse] = useState(null);
   const [reply, setReply] = useState("");
-  const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const fetchResponses = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8000/responses");
+      setResponses(res.data);
+    } catch (err) {
+      message.error("Failed to fetch responses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchResponses = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get("http://localhost:8000/responses");
-        setResponses(res.data);
-      } catch (error) {
-        Swal.fire("Error", "Failed to fetch responses", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchResponses();
   }, []);
 
-  const handleDelete = (id) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "This action cannot be undone!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await axios.delete(`http://localhost:8000/responses/${id}`);
-          setResponses(responses.filter((res) => res._id !== id));
-          Swal.fire("Deleted!", "Response deleted successfully.", "success");
-        } catch (error) {
-          Swal.fire("Error", "Failed to delete response", "error");
-        }
-      }
-    });
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`http://localhost:8000/responses/${id}`);
+      message.success("Response deleted successfully");
+      setResponses(responses.filter((res) => res._id !== id));
+    } catch (err) {
+      message.error("Failed to delete response");
+    }
   };
 
   const handleReplySubmit = async () => {
-    if (reply.trim() === "") {
-      setError("Reply cannot be empty!");
+    if (!reply.trim()) {
+      message.error("Reply cannot be empty!");
       return;
     }
-
     try {
       const res = await axios.put(
         `http://localhost:8000/responses/${selectedResponse._id}/reply`,
         { reply }
       );
       setResponses((prev) =>
-        prev.map((r) =>
-          r._id === selectedResponse._id ? res.data : r
-        )
+        prev.map((r) => (r._id === selectedResponse._id ? res.data : r))
       );
-      Swal.fire("Success", "Reply added successfully!", "success");
+      message.success("Reply sent successfully!");
+      setIsModalVisible(false);
       setReply("");
-      setError("");
-      setShowModal(false);
-    } catch (error) {
-      Swal.fire("Error", "Failed to send reply", "error");
+    } catch (err) {
+      message.error("Failed to send reply");
     }
   };
-
-  const handleSearch = (e) => setSearchText(e.target.value);
 
   const filteredResponses = responses.filter((r) =>
     r.name.toLowerCase().includes(searchText.toLowerCase())
@@ -84,64 +65,70 @@ const Responses = () => {
 
   const columns = [
     {
-      name: "No.",
-      selector: (row, index) => index + 1,
-      width: "60px",
+      title: "No.",
+      render: (_, __, index) => index + 1,
+      width: 60,
     },
     {
-      name: "Name",
-      selector: (row) => row.name,
-      sortable: true,
+      title: "Name",
+      dataIndex: "name",
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
-      name: "Email",
-      selector: (row) => row.email,
-      sortable: true,
+      title: "Email",
+      dataIndex: "email",
+      sorter: (a, b) => a.email.localeCompare(b.email),
     },
     {
-      name: "Phone",
-      selector: (row) => row.phone,
+      title: "Phone",
+      dataIndex: "phone",
     },
     {
-      name: "Message",
-      selector: (row) => row.message,
-      wrap: true,
+      title: "Message",
+      dataIndex: "message",
+      ellipsis: true,
     },
     {
-      name: "Reply",
-      selector: (row) => row.reply || "-",
-      wrap: true,
+      title: "Reply",
+      dataIndex: "reply",
+      render: (text) =>
+        text ? (
+          <Tag color="green">Replied</Tag>
+        ) : (
+          <Tag color="volcano">Pending</Tag>
+        ),
     },
     {
-      name: "Actions",
-      cell: (row) => (
-        <div className="d-flex flex-nowrap">
-          <button
-            className="btn btn-primary btn-sm me-2"
+      title: "Actions",
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            icon={<MailOutlined />}
+            disabled={record.reply}
             onClick={() => {
-              setSelectedResponse(row);
-              setReply(row.reply || "");
-              setShowModal(true);
-              setError("");
+              setSelectedResponse(record);
+              setReply(record.reply || "");
+              setIsModalVisible(true);
             }}
-            disabled={row.reply}
           >
-            {row.reply ? "Replied" : "Reply"}
-          </button>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => handleDelete(row._id)}
+            {record.reply ? "Replied" : "Reply"}
+          </Button>
+          <Button
+            type="danger"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record._id)}
           >
             Delete
-          </button>
-        </div>
+          </Button>
+        </Space>
       ),
     },
   ];
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
+      <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <div>
           <h1>Responses</h1>
           <ol className="breadcrumb mb-0">
@@ -153,67 +140,36 @@ const Responses = () => {
         </div>
       </div>
 
-      <div className="mb-3">
-        <input
-          type="text"
-          className="form-control"
-          placeholder="Search responses..."
-          value={searchText}
-          onChange={handleSearch}
-        />
-      </div>
+      <Input
+        placeholder="Search responses..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        className="mb-3"
+      />
 
-      <div className="card-body">
-        <DataTable
-          columns={columns}
-          data={filteredResponses}
-          pagination
-          highlightOnHover
-          responsive
-          progressPending={loading}
-        />
-      </div>
+      <Table
+        columns={columns}
+        dataSource={filteredResponses}
+        rowKey={(record) => record._id}
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+        scroll={{ x: "max-content" }}
+      />
 
-      {showModal && selectedResponse && (
-        <div
-          className="modal fade show d-block"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Reply to Message</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <label className="form-label">Reply</label>
-                <textarea
-                  className="form-control"
-                  rows="3"
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                ></textarea>
-                {error && <div className="text-danger mt-1">{error}</div>}
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowModal(false)}
-                >
-                  Close
-                </button>
-                <button className="btn btn-primary" onClick={handleReplySubmit}>
-                  Send Reply
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        title="Reply to Message"
+        visible={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        onOk={handleReplySubmit}
+        okText="Send Reply"
+      >
+        <Input.TextArea
+          rows={4}
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          placeholder="Type your reply here"
+        />
+      </Modal>
     </div>
   );
 };

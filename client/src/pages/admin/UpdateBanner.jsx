@@ -1,222 +1,152 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
-import { toast } from "react-toastify";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import {
+  message,
+  Form,
+  InputNumber,
+  Select,
+  Button,
+  Upload,
+  Card,
+  Typography,
+} from "antd";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { UploadOutlined } from "@ant-design/icons";
+
+const { Title } = Typography;
+const { Option } = Select;
 
 const UpdateBanner = () => {
-	const { id } = useParams();
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-	const [formData, setFormData] = useState({
-		bannerImage: null,
-		bannerOrder: "",
-		bannerStatus: "",
-	});
-	const [previewImage, setPreviewImage] = useState("");
-	const [errors, setErrors] = useState({});
-	const [loading, setLoading] = useState(false);
+  const [form] = Form.useForm();
+  const [previewImage, setPreviewImage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-	const navigate = useNavigate();
+  useEffect(() => {
+    const fetchBanner = async () => {
+      try {
+        const res = await axios.get(`http://localhost:8000/banners/${id}`);
+        const banner = res.data;
 
-	useEffect(() => {
-		const fetchBanner = async () => {
-			try {
-				const res = await axios.get(
-					`http://localhost:8000/banners/${id}`
-				);
-				const banner = res.data;
+        form.setFieldsValue({
+          bannerOrder: banner.viewOrder,
+          bannerStatus: banner.activeStatus ? "1" : "0",
+        });
+        setPreviewImage(banner.bannerImage);
+      } catch (err) {
+        message.error("Failed to load banner details.");
+        console.error(err);
+      }
+    };
 
-				setFormData({
-					bannerImage: null,
-					bannerOrder: banner.viewOrder.toString(),
-					bannerStatus: banner.activeStatus ? "1" : "0",
-				});
-				setPreviewImage(banner.bannerImage);
-			} catch (err) {
-				toast.error("Failed to load banner details.");
-				console.error(err);
-			}
-		};
+    fetchBanner();
+  }, [id, form]);
 
-		fetchBanner();
-	}, [id]);
+  const handleImageChange = (file) => {
+    if (!["image/jpeg", "image/png", "image/jpg"].includes(file.type)) {
+      message.error("Only JPG, JPEG, and PNG images are allowed.");
+      return Upload.LIST_IGNORE;
+    }
+    setPreviewImage(URL.createObjectURL(file));
+    return false; // prevent auto upload
+  };
 
-	const handleChange = (e) => {
-		const { name, value, type, files } = e.target;
-		const newValue = type === "file" ? files[0] : value;
+  const handleSubmit = async (values) => {
+    setLoading(true);
+    try {
+      const data = new FormData();
+      data.append("viewOrder", values.bannerOrder);
+      data.append("activeStatus", values.bannerStatus === "1");
+      if (values.bannerImage?.file) {
+        data.append("bannerImage", values.bannerImage.file);
+      }
 
-		// if (name === "bannerImage" && files[0]) {
-		// 	setPreviewImage(URL.createObjectURL(files[0]));
-		// }
+      await axios.put(`http://localhost:8000/banners/${id}`, data);
+      message.success("Banner updated successfully!");
+      navigate("/admin/banners");
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to update banner.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-		setFormData((prev) => ({ ...prev, [name]: newValue }));
-		const error = validateField(name, newValue);
-		setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-	};
+  return (
+    <div>
+      <Title level={2} className="mt-4">
+        Update Banner
+      </Title>
+      <ol className="breadcrumb mb-4">
+        <li className="breadcrumb-item">
+          <Link to="/admin">Dashboard</Link>
+        </li>
+        <li className="breadcrumb-item">
+          <Link to="/admin/banners">Banners</Link>
+        </li>
+        <li className="breadcrumb-item active">Update Banner</li>
+      </ol>
 
-	const validateField = (name, value) => {
-		let error = null;
-		if (name === "bannerImage") {
-			if (
-				value &&
-				!["image/jpeg", "image/png", "image/jpg"].includes(value.type)
-			) {
-				error = "Only JPG, JPEG, and PNG images are allowed.";
-			}
-		}
-		if (name === "bannerOrder") {
-			if (!value.trim()) {
-				error = "View order is required.";
-			} else if (!/^\d+$/.test(value) || parseInt(value) <= 0) {
-				error = "View order must be a positive number.";
-			}
-		}
-		if (name === "bannerStatus" && value === "") {
-			error = "Status is required.";
-		}
-		return error;
-	};
+      <Card>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ bannerStatus: "1" }}
+        >
+          <Form.Item
+            label="Status"
+            name="bannerStatus"
+            rules={[{ required: true, message: "Status is required!" }]}
+          >
+            <Select>
+              <Option value="1">Active</Option>
+              <Option value="0">Inactive</Option>
+            </Select>
+          </Form.Item>
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true); // Start loading
+          <Form.Item
+            label="View Order"
+            name="bannerOrder"
+            rules={[
+              { required: true, message: "View order is required!" },
+              {
+                pattern: /^[1-9]\d*$/,
+                message: "View order must be a positive number!",
+              },
+            ]}
+          >
+            <InputNumber min={1} style={{ width: "100%" }} />
+          </Form.Item>
 
-		const formErrors = {};
-		Object.keys(formData).forEach((field) => {
-			const error = validateField(field, formData[field]);
-			if (error) formErrors[field] = error;
-		});
+          <Form.Item
+            label="Banner Image"
+            name="bannerImage"
+            valuePropName="file"
+          >
+            <Upload
+              beforeUpload={handleImageChange}
+              showUploadList={false}
+              accept=".jpg,.jpeg,.png"
+            >
+              <Button icon={<UploadOutlined />}>Select Image</Button>
+            </Upload>
+            {previewImage && (
+              <img src={previewImage} alt="Preview" className="w-25 mt-2" />
+            )}
+          </Form.Item>
 
-		if (Object.values(formErrors).some(Boolean)) {
-			setErrors(formErrors);
-			setLoading(false); // Stop loading if errors found
-			return;
-		}
-
-		try {
-			const data = new FormData();
-			data.append("viewOrder", formData.bannerOrder);
-			data.append("activeStatus", formData.bannerStatus === "1");
-			if (formData.bannerImage) {
-				data.append("bannerImage", formData.bannerImage);
-			}
-
-			await axios.put(`http://localhost:8000/banners/${id}`, data);
-			toast.success("Banner updated successfully!");
-			navigate("/admin/banners");
-		} catch (err) {
-			console.error(err);
-			toast.error("Failed to update banner.");
-		} finally {
-			setLoading(false); // Stop loading regardless of result
-		}
-	};
-
-	return (
-		<div>
-			<h1 className="mt-4">Update Banner</h1>
-			<ol className="breadcrumb mb-4">
-				<li className="breadcrumb-item">
-					<Link to="/admin">Dashboard</Link>
-				</li>
-				<li className="breadcrumb-item">
-					<Link to="/admin/banners">Banners</Link>
-				</li>
-				<li className="breadcrumb-item active">Update Banner</li>
-			</ol>
-
-			<div className="card mb-4">
-				<div className="card-body">
-					<form onSubmit={handleSubmit} encType="multipart/form-data">
-						<div className="row">
-							<div className="col-md-6">
-								<div className="mb-3">
-									<label
-										htmlFor="bannerStatus"
-										className="form-label"
-									>
-										Status
-									</label>
-									<select
-										className="form-select"
-										id="bannerStatus"
-										name="bannerStatus"
-										value={formData.bannerStatus}
-										onChange={handleChange}
-									>
-										<option value="1">Active</option>
-										<option value="0">Inactive</option>
-									</select>
-									{errors.bannerStatus && (
-										<p className="text-danger">
-											{errors.bannerStatus}
-										</p>
-									)}
-								</div>
-							</div>
-							<div className="col-md-6">
-								<div className="mb-3">
-									<label
-										htmlFor="bannerOrder"
-										className="form-label"
-									>
-										View Order
-									</label>
-									<input
-										type="number"
-										className="form-control"
-										id="bannerOrder"
-										name="bannerOrder"
-										value={formData.bannerOrder}
-										onChange={handleChange}
-									/>
-									{errors.bannerOrder && (
-										<p className="text-danger">
-											{errors.bannerOrder}
-										</p>
-									)}
-								</div>
-							</div>
-						</div>
-
-						<div className="mb-3">
-							<label htmlFor="bannerImage" className="form-label">
-								Banner Image
-							</label>
-							<input
-								type="file"
-								className="form-control"
-								id="bannerImage"
-								name="bannerImage"
-								accept="image/png, image/jpeg, image/jpg"
-								onChange={handleChange}
-							/>
-							{previewImage && (
-								<img
-									src={previewImage}
-									alt="Preview"
-									className="w-25 mt-2"
-								/>
-							)}
-							{errors.bannerImage && (
-								<p className="text-danger">
-									{errors.bannerImage}
-								</p>
-							)}
-						</div>
-
-						<button
-							type="submit"
-							className="btn btn-primary"
-							disabled={loading}
-						>
-							{loading ? "Updating..." : "Update Banner"}
-						</button>
-					</form>
-				</div>
-			</div>
-		</div>
-	);
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              {loading ? "Updating..." : "Update Banner"}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
+    </div>
+  );
 };
 
 export default UpdateBanner;

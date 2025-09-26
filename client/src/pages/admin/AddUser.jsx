@@ -1,174 +1,114 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
+import { Form, Select, InputNumber, Button } from "antd";
 
-const AddUser = () => {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    mobile: "",
-    password: "",
-    profilePicture: null,
-  });
-
-  const [errors, setErrors] = useState({});
+const AddToCart = () => {
+  const { userId } = useParams();
+  const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [form] = Form.useForm();
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) {
-      setErrors((prev) => ({ ...prev, profilePicture: "Profile image is required." }));
-      return;
-    }
-
-    const allowed = ["jpg", "jpeg", "png"];
-    const ext = file.name.split(".").pop().toLowerCase();
-    if (!allowed.includes(ext)) {
-      setErrors((prev) => ({ ...prev, profilePicture: "Image must be JPG, JPEG, or PNG." }));
-      return;
-    }
-
-    setErrors((prev) => ({ ...prev, profilePicture: null }));
-    setFormData((prev) => ({ ...prev, profilePicture: file }));
-  };
-
-  const validateField = (name, value) => {
-    if (!value.trim()) return `${name[0].toUpperCase() + name.slice(1)} is required.`;
-
-    switch (name) {
-      case "firstName":
-      case "lastName":
-        if (value.length < 2) return `${name} must be at least 2 characters.`;
-        if (!/^[A-Za-z\s]+$/.test(value)) return `${name} must contain only letters.`;
-        break;
-      case "email":
-        if (!/^\S+@\S+\.\S+$/.test(value)) return "Invalid email format.";
-        break;
-      case "mobile":
-        if (!/^\d{10}$/.test(value)) return "Mobile number must be 10 digits.";
-        break;
-      case "password":
-        if (value.length < 6) return "Password must be at least 6 characters.";
-        break;
-      default:
-        return null;
-    }
-    return null;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const newErrors = {};
-    Object.entries(formData).forEach(([key, val]) => {
-      if (key !== "profilePicture") {
-        const error = validateField(key, val);
-        if (error) newErrors[key] = error;
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await axios.get("http://localhost:8000/products");
+        setProducts(res.data);
+      } catch (err) {
+        console.error(err);
+        toast.error("Failed to load products.");
       }
-    });
+    };
+    fetchProducts();
+  }, []);
 
-    if (!formData.profilePicture) {
-      newErrors.profilePicture = "Profile image is required.";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
+  const onFinish = async (values) => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      const submission = new FormData();
-      Object.entries(formData).forEach(([key, val]) => {
-        submission.append(key, val);
+      await axios.post("http://localhost:8000/cart", {
+        userId,
+        productId: values.productId,
+        quantity: values.quantity,
       });
-
-      submission.append("authType", "Email"); // hardcoded
-      submission.append("status", "Active"); // hardcoded
-
-      await axios.post("http://localhost:8000/users", submission, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      toast.success("User added successfully!");
-      navigate("/admin/users");
+      toast.success("Product added to cart successfully!");
+      form.resetFields();
     } catch (err) {
       console.error(err);
-      toast.error(err.response?.data?.message || "Failed to add user.");
+      toast.error("Failed to add product to cart.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <h1 className="mt-4">Add User</h1>
-      <ol className="breadcrumb mb-4">
-        <li className="breadcrumb-item"><Link to="/admin/">Dashboard</Link></li>
-        <li className="breadcrumb-item"><Link to="/admin/users">Users</Link></li>
-        <li className="breadcrumb-item active">Add User</li>
-      </ol>
+    <div className="container mt-4">
+      <h1>Add Product to Cart</h1>
+      <nav aria-label="breadcrumb">
+        <ol className="breadcrumb mb-4">
+          <li className="breadcrumb-item">
+            <Link to="/admin">Dashboard</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to="/admin/users">Users</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to={`/admin/cart/${userId}`}>Cart</Link>
+          </li>
+          <li className="breadcrumb-item active" aria-current="page">
+            Add Product to Cart
+          </li>
+        </ol>
+      </nav>
+      <h5>User ID: {userId}</h5>
 
       <div className="card mb-4">
         <div className="card-body">
-          <form onSubmit={handleSubmit}>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label">First Name</label>
-                <input type="text" className="form-control" name="firstName" value={formData.firstName} onChange={handleChange} />
-                {errors.firstName && <small className="text-danger">{errors.firstName}</small>}
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Last Name</label>
-                <input type="text" className="form-control" name="lastName" value={formData.lastName} onChange={handleChange} />
-                {errors.lastName && <small className="text-danger">{errors.lastName}</small>}
-              </div>
-            </div>
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={onFinish}
+            initialValues={{ quantity: 1 }}
+          >
+            <Form.Item
+              label="Product"
+              name="productId"
+              rules={[{ required: true, message: "Please select a product" }]}
+            >
+              <Select placeholder="Select Product">
+                {products.map((prod) => (
+                  <Select.Option key={prod._id} value={prod._id}>
+                    {prod.productName}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
 
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Email</label>
-                <input type="email" className="form-control" name="email" value={formData.email} onChange={handleChange} />
-                {errors.email && <small className="text-danger">{errors.email}</small>}
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Mobile</label>
-                <input type="tel" className="form-control" name="mobile" value={formData.mobile} onChange={handleChange} />
-                {errors.mobile && <small className="text-danger">{errors.mobile}</small>}
-              </div>
-            </div>
+            <Form.Item
+              label="Quantity"
+              name="quantity"
+              rules={[
+                { required: true, message: "Please enter quantity" },
+                {
+                  type: "number",
+                  min: 1,
+                  message: "Quantity must be at least 1",
+                },
+              ]}
+            >
+              <InputNumber min={1} style={{ width: "100%" }} />
+            </Form.Item>
 
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Password</label>
-                <input type="password" className="form-control" name="password" value={formData.password} onChange={handleChange} />
-                {errors.password && <small className="text-danger">{errors.password}</small>}
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label">Profile Picture</label>
-                <input type="file" className="form-control" onChange={handleFileChange} accept="image/*" />
-                {errors.profilePicture && <small className="text-danger">{errors.profilePicture}</small>}
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? "Adding..." : "Add User"}
-            </button>
-          </form>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                Add to Cart
+              </Button>
+            </Form.Item>
+          </Form>
         </div>
       </div>
     </div>
   );
 };
 
-export default AddUser;
+export default AddToCart;

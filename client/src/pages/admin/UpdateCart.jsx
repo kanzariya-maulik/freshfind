@@ -1,59 +1,82 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "react-toastify";
+import { message, Form, InputNumber, Button, Card, Typography } from "antd";
+
+const { Title } = Typography;
 
 const UpdateCart = () => {
-  const [quantity, setQuantity] = useState(2);
-  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    let formErrors = {};
-    if (quantity < 1) formErrors.quantity = "Quantity must be at least 1";
-    setErrors(formErrors);
-    return Object.keys(formErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      toast.success("Cart record updated successfully");
-    }
+  const onFinish = (values) => {
+    setLoading(true);
+    setTimeout(() => {
+      message.success("Cart record updated successfully");
+      setLoading(false);
+    }, 500); // simulate API call
   };
 
   return (
     <div>
-      <h1 className="mt-4">Update Cart</h1>
+      <Title level={2} className="mt-4">
+        Update Cart
+      </Title>
+
       <nav aria-label="breadcrumb">
-                <ol className="breadcrumb mb-4">
-                    <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                    <li className="breadcrumb-item"><Link to="/admin/users">Users</Link></li>
-                    <li className="breadcrumb-item"><Link to="/admin/cart">Cart</Link></li>
-                    <li className="breadcrumb-item active" aria-current="page">Update Cart</li>
-                </ol>
-            </nav>
+        <ol className="breadcrumb mb-4">
+          <li className="breadcrumb-item">
+            <Link to="/admin">Dashboard</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to="/admin/users">Users</Link>
+          </li>
+          <li className="breadcrumb-item">
+            <Link to="/admin/cart">Cart</Link>
+          </li>
+          <li className="breadcrumb-item active" aria-current="page">
+            Update Cart
+          </li>
+        </ol>
+      </nav>
+
       <h5>User: John Doe</h5>
 
-      <div className="card mb-4">
-        <div className="card-body">
-          <form onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label className="form-label">Product</label>
-              <input type="text" className="form-control" value="Product A" disabled />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Quantity</label>
-              <input
-                type="number"
-                className="form-control"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-              />
-              {errors.quantity && <div className="text-danger">{errors.quantity}</div>}
-            </div>
-            <button type="submit" className="btn btn-secondary">Update Cart</button>
-          </form>
-        </div>
-      </div>
+      <Card>
+        <Form
+          layout="vertical"
+          onFinish={onFinish}
+          initialValues={{ quantity: 2 }}
+        >
+          <Form.Item label="Product">
+            <input
+              type="text"
+              className="form-control"
+              value="Product A"
+              disabled
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Quantity"
+            name="quantity"
+            rules={[
+              { required: true, message: "Quantity is required" },
+              {
+                type: "number",
+                min: 1,
+                message: "Quantity must be at least 1",
+              },
+            ]}
+          >
+            <InputNumber style={{ width: "100%" }} min={1} />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading}>
+              Update Cart
+            </Button>
+          </Form.Item>
+        </Form>
+      </Card>
     </div>
   );
 };

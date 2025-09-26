@@ -1,115 +1,154 @@
-    import React, { useEffect, useState } from "react";
-    import { Link, useNavigate } from "react-router-dom";
-    import Swal from "sweetalert2";
-    import DataTable from "react-data-table-component";
-    import axios from "axios";
+import React, { useEffect, useState } from "react";
+import { Table, Avatar, Button, Popconfirm, message, Space } from "antd";
+import { Link } from "react-router-dom";
+import axios from "axios";
 
-    const Users = () => {
-        const navigate = useNavigate();
-        const [users, setUsers] = useState([]);
-        const [loading, setLoading] = useState(false);
+const Users = () => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-        const fetchUsers = async () => {
-            try {
-                setLoading(true);
-                const response = await axios.get("http://localhost:8000/users");
-                setUsers(response.data || []);
-            } catch (error) {
-                console.error("Error fetching users:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:8000/users");
+      setUsers(response.data || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      message.error("Failed to fetch users");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const handleDelete = async (userId) => {
-            const result = await Swal.fire({
-                title: "Are you sure?",
-                text: "Do you want to delete this user? This action cannot be undone!",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonColor: "#d33",
-                cancelButtonColor: "#3085d6",
-                confirmButtonText: "Yes, delete it!",
-            });
+  const handleDelete = async (userId) => {
+    try {
+      await axios.delete(`http://localhost:8000/users/${userId}`);
+      message.success("User deleted successfully");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      message.error("Failed to delete user");
+    }
+  };
 
-            if (result.isConfirmed) {
-                try {
-                    await axios.delete(`http://localhost:8000/users/${userId}`);
-                    Swal.fire("Deleted!", "User has been removed.", "success");
-                    fetchUsers(); // Refresh list
-                } catch (error) {
-                    console.error("Error deleting user:", error);
-                    Swal.fire("Error!", "Something went wrong while deleting the user.", "error");
-                }
-            }
-        };
+  const columns = [
+    {
+      title: "User Image",
+      dataIndex: "profilePicture",
+      key: "profilePicture",
+      render: (src, record) => (
+        <Avatar
+          src={
+            src ||
+            "https://res.cloudinary.com/dnrbe1dpn/image/upload/v1745225977/profile_pictures/ej9p210i4urssawnhk6u.jpg"
+          }
+          size={50}
+        />
+      ),
+    },
+    {
+      title: "User Name",
+      dataIndex: "firstName",
+      key: "name",
+      render: (_, record) =>
+        !record.firstName && !record.lastName
+          ? "Firebase User"
+          : `${record.firstName} ${record.lastName}`,
+      sorter: (a, b) => (a.firstName || "").localeCompare(b.firstName || ""),
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+      sorter: (a, b) => (a.email || "").localeCompare(b.email || ""),
+    },
+    {
+      title: "Phone",
+      dataIndex: "mobile",
+      key: "mobile",
+      render: (mobile) => mobile || "Firebase User",
+      sorter: (a, b) => (a.mobile || "").localeCompare(b.mobile || ""),
+    },
+    {
+      title: "Account Status",
+      dataIndex: "status",
+      key: "status",
+      render: (status) =>
+        status === 1 ? (
+          <span style={{ color: "green" }}>Active</span>
+        ) : (
+          <span style={{ color: "red" }}>Inactive</span>
+        ),
+      sorter: (a, b) => a.status - b.status,
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space size="middle">
+          <Link to={`/admin/update-user/${record._id}`}>
+            <Button type="default" size="small">
+              Edit
+            </Button>
+          </Link>
+          <Popconfirm
+            title="Are you sure to delete this user?"
+            onConfirm={() => handleDelete(record._id)}
+            okText="Yes"
+            cancelText="No"
+          >
+            <Button type="danger" size="small">
+              Delete
+            </Button>
+          </Popconfirm>
+          <Link to={`/admin/cart/${record._id}`}>
+            <Button type="primary" size="small">
+              Cart
+            </Button>
+          </Link>
+        </Space>
+      ),
+    },
+  ];
 
-        const columns = [
-            {
-                name: "User Image",
-                selector: row => (
-                    <img
-                        src={row.profilePicture || "https://res.cloudinary.com/dnrbe1dpn/image/upload/v1745225977/profile_pictures/ej9p210i4urssawnhk6u.jpg"}
-                        alt={row.firstName+" "+row.lastName}
-                        style={{ width: 50, height: 50, objectFit: "cover", borderRadius: "50%" }}
-                    />
-                ),
-                sortable: false
-            },
-            { name: "User Name", selector: row => !row.firstName && !row.lastName ? "Firebase User" : row.firstName+" "+row.lastName, sortable: true },
-            { name: "Email", selector: row => row.email, sortable: true },
-            { name: "Phone", selector: row =>  !row.mobile ? "Firebase User" : row.mobile, sortable: true },
-            {
-                name: "Account Status",
-                selector: row => row.status, 
-                sortable: true
-            },
-            {
-                name: "Actions",
-                cell: row => (
-                    <div className="d-flex gap-1">
-                        {/* <Link to={`/admin/user-details/${row._id}`} className="btn btn-info btn-sm">View</Link> */}
-                        <Link to={`/admin/update-user/${row._id}`} className="btn btn-warning btn-sm">Edit</Link>
-                        <button className="btn btn-danger btn-sm" onClick={() => handleDelete(row._id)}>Delete</button>
-                        <Link to={`/admin/cart/${row._id}`} className="btn btn-info btn-sm">Cart</Link>
-                    </div>
-                ),
-                width:"250px"
-            }
-        ];
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
-        useEffect(() => {
-            fetchUsers();
-        }, []);
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 24,
+        }}
+      >
+        <div>
+          <h1>User Management</h1>
+          <ol className="breadcrumb mb-0">
+            <li className="breadcrumb-item">
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li className="breadcrumb-item active">Users</li>
+          </ol>
+        </div>
+        <Link to="/admin/add-user">
+          <Button type="primary">Add User</Button>
+        </Link>
+      </div>
 
-        return (
-            <div>
-                <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-                    <div>
-                        <h1>User Management</h1>
-                        <ol className="breadcrumb mb-0">
-                            <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                            <li className="breadcrumb-item active">Users</li>
-                        </ol>
-                    </div>
-                    <Link className="btn btn-primary" to="/admin/add-user">Add User</Link>
-                </div>
+      <Table
+        columns={columns}
+        dataSource={users.map((user) => ({ ...user, key: user._id }))}
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+        bordered
+        rowKey="_id"
+      />
+    </div>
+  );
+};
 
-                <div className="card-body">
-                    <DataTable
-                        columns={columns}
-                        data={users}
-                        progressPending={loading}
-                        pagination
-                        highlightOnHover
-                        responsive
-                        striped
-                        persistTableHead
-                        noDataComponent="No users found."
-                    />
-                </div>
-            </div>
-        );
-    };
-
-    export default Users;
+export default Users;

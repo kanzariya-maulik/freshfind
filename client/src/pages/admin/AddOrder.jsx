@@ -1,350 +1,262 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-toastify';
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 import axios from "axios";
+import {
+  Form,
+  Input,
+  Select,
+  Button,
+  DatePicker,
+  InputNumber,
+  Space,
+} from "antd";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+
+const { Option } = Select;
+
 const AddOrder = () => {
-    const navigate = useNavigate();
-    const [formData, setFormData] = useState({
-        userId: "",
-        orderDate: "",
-        products: [{ productId: "", quantity: 1 }],
-        firstName: "",
-        lastName: "",
-        address: "",
-        city: "",
-        state: "",
-        pinCode: "",
-        phone: "",
-        shippingCharge: "0",
-        status: "Pending",
-    });
+  const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-    const [errors, setErrors] = useState({
-        userId: "",
-        orderDate: "",
-        products: [],
-        firstName: "",
-        lastName: "",
-        address: "",
-        city: "",
-        state: "",
-        pinCode: "",
-        phone: "",
-        shippingCharge: "",
-        status: "",
-    });
+  const [form] = Form.useForm();
 
-        // ✅ new state for users and products
-        const [users, setUsers] = useState([]);
-        const [products, setProducts] = useState([]);
-    
-        // ✅ fetch users and products on component mount
-        useEffect(() => {
-            fetchUsers();
-            fetchProducts();
-        }, []);
-    
-        const fetchUsers = async () => {
-            try {
-                const res = await axios.get('http://localhost:8000/users'); // 🔁 update API route as per your backend
-                console.log(res.data);
-                setUsers(res.data);
-            } catch (error) {
-                console.error("Failed to fetch users:", error);
-                toast.error("Failed to load users.");
-            }
-        };
-    
-        const fetchProducts = async () => {
-            try {
-                const res = await axios.get('http://localhost:8000/products'); // 🔁 update API route as per your backend
-                setProducts(res.data);
-            } catch (error) {
-                console.error("Failed to fetch products:", error);
-                toast.error("Failed to load products.");
-            }
-        };
+  useEffect(() => {
+    fetchUsers();
+    fetchProducts();
+  }, []);
 
-    const handleProductChange = (index, e) => {
-        const { name, value } = e.target;
-        const newProducts = [...formData.products];
-        newProducts[index][name] = value;
-        setFormData({ ...formData, products: newProducts });
+  const fetchUsers = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/users");
+      setUsers(res.data);
+    } catch {
+      toast.error("Failed to fetch users");
+    }
+  };
 
-        const errorMessage = validateField(name, value);
-        const newErrors = { ...errors };
-        if (!newErrors.products[index]) newErrors.products[index] = {};
-        newErrors.products[index][name] = errorMessage || undefined;
-        setErrors(newErrors);
-    };
+  const fetchProducts = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/products");
+      setProducts(res.data);
+    } catch {
+      toast.error("Failed to fetch products");
+    }
+  };
 
-    const addProduct = () => {
-        setFormData({
-            ...formData,
-            products: [...formData.products, { productId: "", quantity: 1 }],
-        });
-        setErrors({
-            ...errors,
-            products: [...errors.products, {}],
-        });
-    };
+  const onFinish = async (values) => {
+    setLoading(true);
+    try {
+      // Step 1: Create Address
+      const addressData = {
+        fullName: values.firstName + " " + values.lastName,
+        userId: values.userId,
+        address: values.address,
+        city: values.city,
+        state: values.state,
+        pincode: values.pinCode,
+        phone: values.phone,
+      };
+      const addressRes = await axios.post(
+        "http://localhost:8000/addresses",
+        addressData
+      );
+      const addressId = addressRes.data._id;
 
-    const removeProduct = (index) => {
-        const newProducts = formData.products.filter((_, i) => i !== index);
-        setFormData({ ...formData, products: newProducts });
-        setErrors(prevErrors => {
-            const newErrors = { ...prevErrors };
-            newErrors.products = prevErrors.products.filter((_, i) => i !== index);
-            return newErrors;
-        });
-    };
+      // Step 2: Create Order
+      const orderData = {
+        userId: values.userId,
+        orderDate: values.orderDate.format("YYYY-MM-DD"),
+        orderStatus: values.status,
+        shippingCharge: parseFloat(values.shippingCharge),
+        delAddressId: addressId,
+        products: values.products.map((p) => ({
+          productId: p.productId,
+          quantity: parseInt(p.quantity),
+        })),
+      };
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
+      await axios.post("http://localhost:8000/orders", orderData);
 
-        const errorMessage = validateField(name, value);
-        setErrors((prevErrors) => ({
-            ...prevErrors,
-            [name]: errorMessage || undefined,
-        }));
-    };
+      toast.success("Order added successfully!");
+      navigate("/admin/orders");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to add order.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const validateField = (name, value) => {
-        if (!value || (typeof value === "string" && !value.trim())) {
-            const fieldNames = {
-                userId: "User ID", orderDate: "Order Date", firstName: "First Name",
-                lastName: "Last Name", address: "Address", city: "City", state: "State",
-                pinCode: "Pin Code", phone: "Phone Number", shippingCharge: "Shipping Charge",
-                status: "Order Status", productId: "Product ID", quantity: "Quantity"
-            };
-            return `${fieldNames[name] || "This field"} is required.`;
-        }
-        if (name === "quantity" && (isNaN(value) || value <= 0)) {
-            return "Quantity must be greater than 0.";
-        }
-        return undefined;
-    };
-
-    const validateForm = () => {
-        const newErrors = {
-            userId: "", orderDate: "", products: [], firstName: "", lastName: "",
-            address: "", city: "", state: "", pinCode: "", phone: "", shippingCharge: "", status: ""
-        };
-
-        if (!formData.userId) newErrors.userId = "Please select a user.";
-        if (!formData.orderDate) newErrors.orderDate = "Please enter an order date.";
-
-        formData.products.forEach((product, index) => {
-            newErrors.products[index] = {};
-            if (!product.productId) {
-                newErrors.products[index].productId = "Product ID is required.";
-            }
-            if (!product.quantity || product.quantity <= 0) {
-                newErrors.products[index].quantity = "Quantity must be greater than 0.";
-            }
-        });
-
-        const requiredFields = ["firstName", "lastName", "address", "city", "state", "pinCode", "phone", "shippingCharge"];
-        requiredFields.forEach((field) => {
-            if (!formData[field]) {
-                newErrors[field] = `${field.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase())} is required.`;
-            }
-        });
-
-        setErrors(newErrors);
-
-        const hasErrors = Object.entries(newErrors)
-            .some(([key, value]) => key !== "products" && value) ||
-            newErrors.products.some(productErrors => Object.values(productErrors).some(error => error));
-
-        return !hasErrors;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-    
-        // Step 1: Validate the form
-        if (validateForm()) {
-            try {
-                // Step 2: Add the Address first
-                const addressData = {
-                    fullName: formData.firstName+" "+formData.lastName,
-                    userId: formData.userId,
-                    address: formData.address,
-                    city: formData.city,
-                    state: formData.state,
-                    pincode: formData.pinCode,
-                    phone: formData.phone
-                };
-                console.log(addressData);
-                // Send a POST request to create the address in the backend
-                const addressResponse = await axios.post('http://localhost:8000/addresses', addressData);
-                if (addressResponse.data._id) {
-                    // Step 3: Get the address ID from the response
-                    const addressId = addressResponse.data._id;
-    
-                    // Step 4: Prepare the order data with the addressId
-                    const orderData = {
-                        userId: formData.userId,
-                        orderDate: formData.orderDate,
-                        orderStatus:formData.status,
-                        products: formData.products,
-                        shippingCharge: formData.shippingCharge,
-                        delAddressId: addressId
-                    };
-                    console.log(orderData);
-                    // Step 5: Add the order using the addressId
-                    const orderResponse = await axios.post('http://localhost:8000/orders', orderData);
-    
-                    if (orderResponse.status === 201) {
-                        toast.success("Order added successfully!");
-                        navigate("/admin/orders");
-                    } else {
-                        toast.error("Failed to add order.");
-                    }
-                } else {
-                    toast.error("Failed to create address.");
-                }
-            } catch (error) {
-                console.error("Error submitting order:", error);
-                toast.error("An error occurred while submitting the order.");
-            }
-        }
-    };
-    
-
-    return (
+  return (
+    <div>
+      <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
         <div>
-            <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
-                <div>
-                    <h1>Add New Order</h1>
-                    <ol className="breadcrumb mb-0">
-                        <li className="breadcrumb-item"><Link to="/admin">Dashboard</Link></li>
-                        <li className="breadcrumb-item"><Link to="/admin/orders">Orders</Link></li>
-                        <li className="breadcrumb-item active">Add Order</li>
-                    </ol>
-                </div>
-            </div>
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">User</label>
-                    <select className="form-select" name="userId" value={formData.userId} onChange={handleChange}>
-                        <option value="">Select User</option>
-                        {users.map(user => <option key={user._id} value={user._id}>{user.firstName}</option>)}
-                        
-                    </select>
-                    {errors.userId && <div className="error-message">{errors.userId}</div>}
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Order Date</label>
-                    <input type="date" className="form-control" name="orderDate" value={formData.orderDate} onChange={handleChange} />
-                    {errors.orderDate && <div className="error-message">{errors.orderDate}</div>}
-                </div>
-
-                <div id="productContainer">
-                    {formData.products.map((product, index) => (
-                        <div className="product-entry mb-3" key={index}>
-                            <h5>Product {index + 1}</h5>
-                            <div className="row align-items-end">
-                                <div className="col-md-5">
-                                    <label className="form-label">Product</label>
-                                    <select
-                                        className="form-select"
-                                        name="productId"
-                                        value={product.productId}
-                                        onChange={(e) => handleProductChange(index, e)}
-                                    >
-                                        <option value="">Select Product</option>
-                                        {products.map(prod => (
-                                            <option key={prod._id} value={prod._id}>{prod.productName}</option>
-                                        ))}
-                                    </select>
-                                    {errors.products[index]?.productId && <div className="error-message">{errors.products[index].productId}</div>}
-                                </div>
-                                <div className="col-md-5">
-                                    <label className="form-label">Quantity</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        name="quantity"
-                                        min="1"
-                                        value={product.quantity}
-                                        onChange={(e) => handleProductChange(index, e)}
-                                    />
-                                    {errors.products[index]?.quantity && <div className="error-message">{errors.products[index].quantity}</div>}
-                                </div>
-                                <div className="col-md-2">
-                                    <button type="button" className="btn btn-danger mt-2" onClick={() => removeProduct(index)}>Delete</button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <button type="button" className="btn btn-secondary mb-3" onClick={addProduct}>Add Another Product</button>
-
-                <h4>Shipping Details</h4>
-                <div className="row">
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">First Name</label>
-                        <input type="text" name="firstName" className="form-control" value={formData.firstName} onChange={handleChange} />
-                        {errors.firstName && <div className="error-message">{errors.firstName}</div>}
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Last Name</label>
-                        <input type="text" name="lastName" className="form-control" value={formData.lastName} onChange={handleChange} />
-                        {errors.lastName && <div className="error-message">{errors.lastName}</div>}
-                    </div>
-                    <div className="col-12 mb-3">
-                        <label className="form-label">Address</label>
-                        <textarea name="address" className="form-control" rows="2" value={formData.address} onChange={handleChange}></textarea>
-                        {errors.address && <div className="error-message">{errors.address}</div>}
-                    </div>
-                    <div className="col-md-4 mb-3">
-                        <label className="form-label">City</label>
-                        <input type="text" name="city" className="form-control" value={formData.city} onChange={handleChange} />
-                        {errors.city && <div className="error-message">{errors.city}</div>}
-                    </div>
-                    <div className="col-md-4 mb-3">
-                        <label className="form-label">State</label>
-                        <input type="text" name="state" className="form-control" value={formData.state} onChange={handleChange} />
-                        {errors.state && <div className="error-message">{errors.state}</div>}
-                    </div>
-                    <div className="col-md-4 mb-3">
-                        <label className="form-label">Pin Code</label>
-                        <input type="text" name="pinCode" className="form-control" value={formData.pinCode} onChange={handleChange} />
-                        {errors.pinCode && <div className="error-message">{errors.pinCode}</div>}
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Phone</label>
-                        <input type="text" name="phone" className="form-control" value={formData.phone} onChange={handleChange} />
-                        {errors.phone && <div className="error-message">{errors.phone}</div>}
-                    </div>
-                    <div className="col-md-6 mb-3">
-                        <label className="form-label">Shipping Charge</label>
-                        <input type="number" name="shippingCharge" className="form-control" value={formData.shippingCharge} onChange={handleChange} />
-                        {errors.shippingCharge && <div className="error-message">{errors.shippingCharge}</div>}
-                    </div>
-                </div>
-
-                <div className="mb-3">
-                    <label className="form-label">Order Status</label>
-                    <select name="status" className="form-select" value={formData.status} onChange={handleChange}>
-                        <option value="Pending">Pending</option>
-                        <option value="Processing">Processing</option>
-                        <option value="Shipped">Shipped</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                    {errors.status && <div className="error-message">{errors.status}</div>}
-                </div>
-
-                <button type="submit" className="btn btn-primary">Submit Order</button>
-            </form>
+          <h1>Add New Order</h1>
+          <ol className="breadcrumb mb-0">
+            <li className="breadcrumb-item">
+              <Link to="/admin">Dashboard</Link>
+            </li>
+            <li className="breadcrumb-item">
+              <Link to="/admin/orders">Orders</Link>
+            </li>
+            <li className="breadcrumb-item active">Add Order</li>
+          </ol>
         </div>
-    );
+      </div>
+
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={onFinish}
+        initialValues={{
+          products: [{ productId: "", quantity: 1 }],
+          status: "Pending",
+          shippingCharge: 0,
+        }}
+      >
+        <Form.Item
+          name="userId"
+          label="User"
+          rules={[{ required: true, message: "Please select a user" }]}
+        >
+          <Select placeholder="Select User">
+            {users.map((u) => (
+              <Option key={u._id} value={u._id}>
+                {u.firstName} {u.lastName}
+              </Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
+          name="orderDate"
+          label="Order Date"
+          rules={[{ required: true, message: "Please select order date" }]}
+        >
+          <DatePicker style={{ width: "100%" }} />
+        </Form.Item>
+
+        <Form.List name="products">
+          {(fields, { add, remove }) => (
+            <div>
+              {fields.map((field) => (
+                <Space
+                  key={field.key}
+                  style={{ display: "flex", marginBottom: 8 }}
+                  align="baseline"
+                >
+                  <Form.Item
+                    {...field}
+                    name={[field.name, "productId"]}
+                    fieldKey={[field.fieldKey, "productId"]}
+                    rules={[{ required: true, message: "Select product" }]}
+                  >
+                    <Select placeholder="Select Product" style={{ width: 200 }}>
+                      {products.map((p) => (
+                        <Option key={p._id} value={p._id}>
+                          {p.productName}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+
+                  <Form.Item
+                    {...field}
+                    name={[field.name, "quantity"]}
+                    fieldKey={[field.fieldKey, "quantity"]}
+                    rules={[
+                      { required: true, message: "Enter quantity" },
+                      {
+                        type: "number",
+                        min: 1,
+                        message: "Quantity must be at least 1",
+                      },
+                    ]}
+                  >
+                    <InputNumber placeholder="Quantity" min={1} />
+                  </Form.Item>
+
+                  <MinusCircleOutlined onClick={() => remove(field.name)} />
+                </Space>
+              ))}
+
+              <Form.Item>
+                <Button
+                  type="dashed"
+                  onClick={() => add()}
+                  block
+                  icon={<PlusOutlined />}
+                >
+                  Add Product
+                </Button>
+              </Form.Item>
+            </div>
+          )}
+        </Form.List>
+
+        <h4>Shipping Details</h4>
+        <Form.Item
+          name="firstName"
+          label="First Name"
+          rules={[{ required: true }]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item
+          name="lastName"
+          label="Last Name"
+          rules={[{ required: true }]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item name="address" label="Address" rules={[{ required: true }]}>
+          <Input.TextArea rows={2} />
+        </Form.Item>
+        <Form.Item name="city" label="City" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="state" label="State" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="pinCode" label="Pin Code" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="phone" label="Phone" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item
+          name="shippingCharge"
+          label="Shipping Charge"
+          rules={[{ required: true }]}
+        >
+          <InputNumber min={0} style={{ width: "100%" }} />
+        </Form.Item>
+
+        <Form.Item
+          name="status"
+          label="Order Status"
+          rules={[{ required: true }]}
+        >
+          <Select>
+            <Option value="Pending">Pending</Option>
+            <Option value="Processing">Processing</Option>
+            <Option value="Shipped">Shipped</Option>
+            <Option value="Delivered">Delivered</Option>
+            <Option value="Cancelled">Cancelled</Option>
+          </Select>
+        </Form.Item>
+
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={loading}>
+            Submit Order
+          </Button>
+        </Form.Item>
+      </Form>
+    </div>
+  );
 };
 
 export default AddOrder;

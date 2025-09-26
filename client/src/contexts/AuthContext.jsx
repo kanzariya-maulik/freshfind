@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }) => {
       try {
         const { data } = await axios.get("http://localhost:8000/products/");
         setAllProducts(data);
-        setFilteredProducts(data); // default view
+        setFilteredProducts(data);
       } catch (error) {
         console.error("Failed to load products:", error);
       }
@@ -104,7 +104,6 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
   });
-  // ✅ New: Refresh all states from localStorage
   const refresh = () => {
     const savedToken = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");

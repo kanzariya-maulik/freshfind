@@ -1,23 +1,30 @@
-import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import Swal from "sweetalert2";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  Table,
+  Tag,
+  Input,
+  Button,
+  Space,
+  Card,
+  message,
+  Popconfirm,
+} from "antd";
+import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import axios from "axios";
-import DataTable from "react-data-table-component";
 
 const Offers = () => {
   const [offers, setOffers] = useState([]);
-  const [searchText, setSearchText] = useState("");
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const [searchText, setSearchText] = useState("");
 
   const fetchOffers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get("http://localhost:8000/offers");
-      setOffers(response.data);
-    } catch (error) {
-      console.error("Error fetching offers:", error);
-      Swal.fire("Error", "Failed to load offers", "error");
+      const res = await axios.get("http://localhost:8000/offers");
+      setOffers(res.data);
+    } catch {
+      message.error("Failed to load offers");
     } finally {
       setLoading(false);
     }
@@ -28,26 +35,13 @@ const Offers = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    Swal.fire({
-      title: "Are you sure?",
-      text: "You won’t be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#d33",
-      cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete it!",
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await axios.delete(`http://localhost:8000/offers/${id}`);
-          Swal.fire("Deleted!", "Offer has been deleted.", "success");
-          fetchOffers(); // refresh the data
-        } catch (err) {
-          console.error(err);
-          Swal.fire("Error", "Failed to delete offer", "error");
-        }
-      }
-    });
+    try {
+      await axios.delete(`http://localhost:8000/offers/${id}`);
+      message.success("Offer deleted successfully");
+      fetchOffers();
+    } catch (err) {
+      message.error("Failed to delete offer");
+    }
   };
 
   const filteredOffers = offers.filter((offer) =>
@@ -59,63 +53,79 @@ const Offers = () => {
 
   const columns = [
     {
-      name: "Offer Description",
-      selector: (row) => row.offerDescription,
-      sortable: true,
-      wrap: true,
+      title: "Offer Description",
+      dataIndex: "offerDescription",
+      key: "offerDescription",
+      sorter: (a, b) => a.offerDescription.localeCompare(b.offerDescription),
     },
     {
-      name: "Offer Code",
-      selector: (row) => row.offerCode,
-      sortable: true,
+      title: "Offer Code",
+      dataIndex: "offerCode",
+      key: "offerCode",
+      sorter: (a, b) => a.offerCode.localeCompare(b.offerCode),
     },
     {
-      name: "Discount",
-      selector: (row) => `${row.discount}%`,
+      title: "Discount",
+      dataIndex: "discount",
+      key: "discount",
+      render: (discount) => `${discount}%`,
+      sorter: (a, b) => a.discount - b.discount,
     },
     {
-      name: "Minimum Order",
-      selector: (row) => `₹${parseFloat(row.minimumOrder).toFixed(2)}`,
+      title: "Minimum Order",
+      dataIndex: "minimumOrder",
+      key: "minimumOrder",
+      render: (amount) => `₹${parseFloat(amount).toFixed(2)}`,
+      sorter: (a, b) => a.minimumOrder - b.minimumOrder,
     },
     {
-      name: "Status",
-      selector: (row) => {
+      title: "Status",
+      dataIndex: "status",
+      key: "status",
+      render: (_, record) => {
         const now = new Date();
-        const start = new Date(row.startDate);
-        const end = new Date(row.endDate);
-        return now >= start && now <= end ? "Active" : "Expired";
-      },
-      cell: (row) => {
-        const now = new Date();
-        const start = new Date(row.startDate);
-        const end = new Date(row.endDate);
-        const active = now >= start && now <= end;
+        const start = new Date(record.startDate);
+        const end = new Date(record.endDate);
+        const isActive = now >= start && now <= end;
         return (
-          <span
-            className={`badge ${active ? "bg-success" : "bg-danger"}`}
-          >
-            {active ? "Active" : "Expired"}
-          </span>
+          <Tag color={isActive ? "green" : "red"}>
+            {isActive ? "Active" : "Expired"}
+          </Tag>
         );
       },
+      filters: [
+        { text: "Active", value: "Active" },
+        { text: "Expired", value: "Expired" },
+      ],
+      onFilter: (value, record) => {
+        const now = new Date();
+        const start = new Date(record.startDate);
+        const end = new Date(record.endDate);
+        const isActive = now >= start && now <= end;
+        return (isActive ? "Active" : "Expired") === value;
+      },
     },
     {
-      name: "Actions",
-      cell: (row) => (
-        <div className="d-flex flex-nowrap">
-          <Link
-            to={`/admin/update-offer/${row._id}`}
-            className="btn btn-secondary btn-sm me-2"
-          >
-            Edit
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space>
+          <Link to={`/admin/update-offer/${record._id}`}>
+            <Button icon={<EditOutlined />} type="primary" size="small">
+              Edit
+            </Button>
           </Link>
-          <button
-            className="btn btn-danger btn-sm"
-            onClick={() => handleDelete(row._id)}
+          <Popconfirm
+            title="Are you sure you want to delete this offer?"
+            onConfirm={() => handleDelete(record._id)}
+            okText="Yes"
+            cancelText="No"
           >
-            Delete
-          </button>
-        </div>
+            <Button icon={<DeleteOutlined />} type="danger" size="small">
+              Delete
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];
@@ -132,45 +142,29 @@ const Offers = () => {
             <li className="breadcrumb-item active">Offers</li>
           </ol>
         </div>
-        <Link to="/admin/add-offer" className="btn btn-primary">
-          Add Offer
+        <Link to="/admin/add-offer">
+          <Button type="primary" icon={<PlusOutlined />}>
+            Add Offer
+          </Button>
         </Link>
       </div>
 
-      <div className="mb-3">
-        <input
-          type="text"
-          className="form-control"
+      <Card>
+        <Input.Search
           placeholder="Search offers..."
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
+          style={{ marginBottom: 16, width: 300 }}
+          allowClear
         />
-      </div>
-
-      <div className="card-body">
-        <DataTable
+        <Table
           columns={columns}
-          data={filteredOffers}
-          pagination
-          highlightOnHover
-          responsive
-          progressPending={loading}
-          noDataComponent="No offers found"
-          customStyles={{
-            headCells: {
-              style: {
-                fontSize: "16px",
-                fontWeight: "bold",
-              },
-            },
-            cells: {
-              style: {
-                fontSize: "14px",
-              },
-            },
-          }}
+          dataSource={filteredOffers}
+          rowKey={(record) => record._id}
+          loading={loading}
+          pagination={{ pageSize: 10 }}
         />
-      </div>
+      </Card>
     </div>
   );
 };

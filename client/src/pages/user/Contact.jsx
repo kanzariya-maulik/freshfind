@@ -1,21 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "react-toastify";
+import { Form, Input, Button, Card, Row, Col, message, Spin } from "antd";
 import axios from "axios";
 
-const Contact = () => {
-  const [formData, setFormData] = useState({
-    contactName: "",
-    contactEmail: "",
-    contactPhone: "",
-    contactMessage: "",
-  });
+const { TextArea } = Input;
 
-  const [errors, setErrors] = useState({});
+const Contact = () => {
+  const [form] = Form.useForm();
   const [contactInfo, setContactInfo] = useState({
     contactNumber: "",
     contactEmail: "",
   });
+  const [loading, setLoading] = useState(true);
 
   // Fetch contact info from backend
   useEffect(() => {
@@ -25,186 +21,138 @@ const Contact = () => {
         setContactInfo(response.data);
       } catch (error) {
         console.error("Failed to fetch contact info", error);
-        toast.error("Unable to load contact details.");
+        message.error("Unable to load contact details.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchContactInfo();
   }, []);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    const error = validateField(name, value);
-    setErrors((prevErrors) => ({ ...prevErrors, [name]: error }));
-  };
-
-  const validateField = (name, value) => {
-    let error = "";
-    switch (name) {
-      case "contactName":
-        if (!value.trim()) error = "Name is required";
-        break;
-      case "contactEmail":
-        if (!value.trim()) error = "Email is required";
-        else if (!/^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$/.test(value))
-          error = "Invalid email format";
-        break;
-      case "contactPhone":
-        if (!value.trim()) error = "Phone number is required";
-        else if (!/^\d{10}$/.test(value))
-          error = "Phone number must be 10 digits";
-        break;
-      case "contactMessage":
-        if (!value.trim()) error = "Message is required";
-        else if (value.length < 10)
-          error = "Message must be at least 10 characters";
-        break;
-      default:
-        break;
-    }
-    return error;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    const formErrors = {};
-    Object.keys(formData).forEach((field) => {
-      const error = validateField(field, formData[field]);
-      if (error) formErrors[field] = error;
-    });
-
-    if (Object.values(formErrors).some((error) => error)) {
-      setErrors(formErrors);
-      return;
-    }
-
+  const handleSubmit = async (values) => {
     try {
-      const responsePayload = {
-        name: formData.contactName,
-        email: formData.contactEmail,
-        phone: formData.contactPhone,
-        message: formData.contactMessage,
+      const payload = {
+        name: values.contactName,
+        email: values.contactEmail,
+        phone: values.contactPhone,
+        message: values.contactMessage,
       };
-
-      // Send the form data to the backend
-      await axios.post("http://localhost:8000/responses", responsePayload);
-
-      toast.success("Message sent successfully!");
-
-      setFormData({
-        contactName: "",
-        contactEmail: "",
-        contactPhone: "",
-        contactMessage: "",
-      });
-      setErrors({});
+      await axios.post("http://localhost:8000/responses", payload);
+      message.success("Message sent successfully!");
+      form.resetFields();
     } catch (error) {
       console.error("Error submitting contact form:", error);
-      toast.error("Failed to send message. Please try again later.");
+      message.error("Failed to send message. Please try again later.");
     }
   };
 
-  return (
-    <>
-      <div className="container sitemap mt-5">
-        <p>
-          <Link to="/" className="text-decoration-none dim link">
-            Home /
-          </Link>{" "}
-          Contact
-        </p>
-      </div>
-      <div className="container">
-        <div className="row">
-          <div className="col-12 col-md-4 col-sm-12 p-2">
-            <div className="shadow-sm p-4 flex-col">
-              <div className="flex">
-                <img src="img/icons/icons-phone.png" alt="Phone" />
-                <p className="m-0">Call to us</p>
-              </div>
-              <p className="m-0">We are available 24/7, 7 days a week.</p>
-              <p className="m-0">Phone: {contactInfo.contactNumber || "Loading..."}</p>
-              <div className="line"></div>
-              <div className="flex">
-                <img src="img/icons/icons-mail.png" alt="Mail" />
-                <p className="m-0">Write To Us</p>
-              </div>
-              <p className="m-0">
-                Fill out our form and we will contact you within 24 hours.
-              </p>
-              <p className="m-0 text-break">Email: {contactInfo.contactEmail || "Loading..."}</p>
-            </div>
-          </div>
+  if (loading) return <Spin tip="Loading..." className="d-block mt-5" />;
 
-          <div className="col-12 col-md-8 col-sm-12 p-2">
-            <div className="shadow-sm p-4">
-              <form id="contactForm" onSubmit={handleSubmit}>
-                <div className="flex form">
-                  <div className="flex-item">
-                    <input
-                      type="text"
-                      id="contactName"
-                      name="contactName"
-                      placeholder="Your Name*"
-                      className="w-100"
-                      value={formData.contactName}
-                      onChange={handleChange}
-                    />
-                    <p className="error">{errors.contactName}</p>
-                  </div>
-                  <div className="flex-item">
-                    <input
-                      type="text"
-                      id="contactEmail"
-                      name="contactEmail"
-                      placeholder="Your Email*"
-                      className="w-100"
-                      value={formData.contactEmail}
-                      onChange={handleChange}
-                    />
-                    <p className="error">{errors.contactEmail}</p>
-                  </div>
-                  <div className="flex-item">
-                    <input
-                      type="text"
-                      id="contactPhone"
-                      name="contactPhone"
-                      placeholder="Your Phone*"
-                      className="w-100"
-                      value={formData.contactPhone}
-                      onChange={handleChange}
-                    />
-                    <p className="error">{errors.contactPhone}</p>
-                  </div>
-                </div>
-                <div className="flex flex-column align-items-start">
-                  <textarea
-                    name="contactMessage"
-                    id="contactMessage"
-                    className="flex-item w-100"
-                    rows="7"
-                    placeholder="Your Message*"
-                    value={formData.contactMessage}
-                    onChange={handleChange}
-                  ></textarea>
-                  <p className="error">{errors.contactMessage}</p>
-                </div>
-                <div className="d-flex justify-content-end">
-                  <input
-                    type="submit"
-                    name="submit"
-                    value="Send Message"
-                    className="btn-msg mt-2"
-                  />
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+  return (
+    <div className="container mt-5">
+      <p>
+        <Link to="/" className="text-decoration-none dim link">
+          Home /
+        </Link>{" "}
+        Contact
+      </p>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
+          <Card title="Contact Info" bordered className="shadow-sm">
+            <p>
+              <strong>Call Us:</strong>{" "}
+              {contactInfo.contactNumber || "Loading..."}
+            </p>
+            <p>We are available 24/7, 7 days a week.</p>
+            <p>
+              <strong>Email:</strong> {contactInfo.contactEmail || "Loading..."}
+            </p>
+            <p>Fill out our form and we will contact you within 24 hours.</p>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={16}>
+          <Card title="Send Us a Message" bordered className="shadow-sm">
+            <Form
+              form={form}
+              layout="vertical"
+              onFinish={handleSubmit}
+              initialValues={{
+                contactName: "",
+                contactEmail: "",
+                contactPhone: "",
+                contactMessage: "",
+              }}
+            >
+              <Row gutter={16}>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Your Name"
+                    name="contactName"
+                    rules={[
+                      { required: true, message: "Please enter your name" },
+                    ]}
+                  >
+                    <Input placeholder="Your Name*" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Your Email"
+                    name="contactEmail"
+                    rules={[
+                      { required: true, message: "Please enter your email" },
+                      { type: "email", message: "Invalid email format" },
+                    ]}
+                  >
+                    <Input placeholder="Your Email*" />
+                  </Form.Item>
+                </Col>
+                <Col xs={24} sm={12}>
+                  <Form.Item
+                    label="Your Phone"
+                    name="contactPhone"
+                    rules={[
+                      {
+                        required: true,
+                        message: "Please enter your phone number",
+                      },
+                      {
+                        pattern: /^\d{10}$/,
+                        message: "Phone number must be 10 digits",
+                      },
+                    ]}
+                  >
+                    <Input placeholder="Your Phone*" />
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              <Form.Item
+                label="Your Message"
+                name="contactMessage"
+                rules={[
+                  { required: true, message: "Please enter your message" },
+                  {
+                    min: 10,
+                    message: "Message must be at least 10 characters",
+                  },
+                ]}
+              >
+                <TextArea rows={7} placeholder="Your Message*" />
+              </Form.Item>
+
+              <Form.Item>
+                <Button type="primary" htmlType="submit">
+                  Send Message
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
+    </div>
   );
 };
 

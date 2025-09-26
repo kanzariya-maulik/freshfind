@@ -1,240 +1,203 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import Swal from "sweetalert2";
-import DataTable from "react-data-table-component";
+import { Table, Input, Button, Space, Modal, message, Rate } from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  CommentOutlined,
+} from "@ant-design/icons";
 import axios from "axios";
 
 const Reviews = () => {
   const [reviews, setReviews] = useState([]);
-  const [filteredReviews, setFilteredReviews] = useState([]);
-  const [search, setSearch] = useState("");
-  const [reply, setReply] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const [selectedReview, setSelectedReview] = useState(null);
-  const [error, setError] = useState("");
+  const [reply, setReply] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false);
+
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get("http://localhost:8000/reviews");
+      setReviews(res.data);
+    } catch {
+      message.error("Failed to fetch reviews");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchReviews();
   }, []);
 
-  const fetchReviews = async () => {
-    try {
-      const res = await axios.get("http://localhost:8000/reviews"); // Replace with your actual endpoint
-      setReviews(res.data);
-      setFilteredReviews(res.data);
-    } catch (err) {
-      console.error("Error fetching reviews:", err);
-    }
-  };
-
-  useEffect(() => {
-    const result = reviews.filter(
-      (item) =>
-        item.productName?.toLowerCase().includes(search?.toLowerCase()) ||
-        item.userName?.toLowerCase().includes(search?.toLowerCase()) ||
-        item.review?.toLowerCase().includes(search?.toLowerCase())
-    );
-    setFilteredReviews(result);
-  }, [search, reviews]);
-
   const handleDelete = async (id) => {
-    const confirm = await Swal.fire({
-      title: "Are you sure?",
-      text: "You won't be able to revert this!",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete it!",
-    });
-
-    if (confirm.isConfirmed) {
-      try {
-        await axios.delete(`http://localhost:8000/reviews/${id}`);
-        fetchReviews();
-        Swal.fire("Deleted!", "Review has been deleted.", "success");
-      } catch (err) {
-        console.error(err);
-        Swal.fire("Error", "Could not delete review.", "error");
-      }
+    try {
+      await axios.delete(`http://localhost:8000/reviews/${id}`);
+      message.success("Review deleted successfully");
+      setReviews(reviews.filter((r) => r._id !== id));
+    } catch {
+      message.error("Failed to delete review");
     }
   };
 
   const handleReplySubmit = async () => {
-    if (reply.trim() === "") {
-      setError("Reply cannot be empty!");
+    if (!reply.trim()) {
+      message.error("Reply cannot be empty!");
       return;
     }
 
     try {
-      await axios.put(`http://localhost:8000/reviews/${selectedReview._id}/reply`, {
-        reply,
-      });
-
-      setReply("");
-      setError("");
-      setSelectedReview(null);
-      fetchReviews();
-
-      Swal.fire(
-        "Success",
-        selectedReview.reply ? "Reply updated!" : "Reply added!",
-        "success"
+      const res = await axios.put(
+        `http://localhost:8000/reviews/${selectedReview._id}/reply`,
+        { reply }
       );
-    } catch (err) {
-      console.error("Reply update error:", err);
-      Swal.fire("Error", "Could not update reply.", "error");
+
+      setReviews((prev) =>
+        prev.map((r) => (r._id === selectedReview._id ? res.data : r))
+      );
+      message.success(selectedReview.reply ? "Reply updated!" : "Reply added!");
+      setIsModalVisible(false);
+      setReply("");
+      setSelectedReview(null);
+    } catch {
+      message.error("Failed to update reply");
     }
   };
 
+  const filteredReviews = reviews.filter(
+    (r) =>
+      r.productId?.productName
+        ?.toLowerCase()
+        .includes(searchText.toLowerCase()) ||
+      r.userId?.firstName?.toLowerCase().includes(searchText.toLowerCase()) ||
+      r.review?.toLowerCase().includes(searchText.toLowerCase())
+  );
+
   const columns = [
-     {
-      name: "Product ID",
-      selector: (row) => row.productId._id,
-    },
-        {
-          name: "Product",
-          selector: (row) => row.productId?.productName,
-          sortable: true,
-          cell: (row) => (
-            <div className="d-flex align-items-center">
-              <img
-                src={row.productId?.productImage || "https://via.placeholder.com/50"} // fallback
-                alt={row.productId?.productName}
-                style={{ width: 50, height: 50, objectFit: "cover", marginRight: 10 }}
-              />
-                {row.productId?.productName}
-            </div>
-          ),
-        },
-        {
-          name: "Username",
-          selector: (row) =>
-            `${row.userId?.firstName || ""} ${row.userId?.lastName || ""}`,
-          sortable: true,
-          cell: (row) => (
-            <div>
-              {row.userId?.firstName} {row.userId?.lastName}
-              </div>
-          ),
-        },      
     {
-      name: "Rating",
-      selector: (row) => row.rating,
-      sortable: true,
-      cell: (row) => (
-        <span className="text-warning">
-          {Array.from({ length: 5 }, (_, i) => (i < row.rating ? "★" : "☆"))}
-        </span>
+      title: "Product",
+      dataIndex: ["productId", "productName"],
+      render: (_, record) => (
+        <Space>
+          <img
+            src={
+              record.productId?.productImage || "https://via.placeholder.com/50"
+            }
+            alt={record.productId?.productName}
+            style={{ width: 50, height: 50, objectFit: "cover" }}
+          />
+          {record.productId?.productName}
+        </Space>
       ),
+      sorter: (a, b) =>
+        a.productId?.productName?.localeCompare(b.productId?.productName),
     },
     {
-      name: "Review",
-      selector: (row) => row.review,
+      title: "Username",
+      render: (_, record) =>
+        `${record.userId?.firstName || ""} ${record.userId?.lastName || ""}`,
+      sorter: (a, b) =>
+        `${a.userId?.firstName} ${a.userId?.lastName}`.localeCompare(
+          `${b.userId?.firstName} ${b.userId?.lastName}`
+        ),
     },
     {
-      name: "Reply",
-      selector: (row) => row.reply || "-",
+      title: "Rating",
+      dataIndex: "rating",
+      render: (rating) => <Rate disabled defaultValue={rating} />,
+      sorter: (a, b) => a.rating - b.rating,
     },
     {
-      name: "Actions",
-      cell: (row) => (
-        <div className="d-flex flex-nowrap gap-1">
-          <button
-            className="btn btn-primary btn-sm"
-            data-bs-toggle="modal"
-            data-bs-target="#replyModal"
+      title: "Review",
+      dataIndex: "review",
+    },
+    {
+      title: "Reply",
+      dataIndex: "reply",
+      render: (text) => (text ? text : "-"),
+    },
+    {
+      title: "Actions",
+      render: (_, record) => (
+        <Space>
+          <Button
+            type="primary"
+            icon={<CommentOutlined />}
+            disabled={record.reply}
             onClick={() => {
-              setSelectedReview(row);
-              setReply(row.reply || "");
-              setError("");
+              setSelectedReview(record);
+              setReply(record.reply || "");
+              setIsModalVisible(true);
             }}
           >
-            {row.reply ? "Update Reply" : "Reply"}
-          </button>
-          <Link to={`/admin/update-review/${row._id}`} className="btn btn-info btn-sm">
-            Update
+            {record.reply ? "Replied" : "Reply"}
+          </Button>
+          <Link to={`/admin/update-review/${record._id}`}>
+            <Button type="default" icon={<EditOutlined />}>
+              Update
+            </Button>
           </Link>
-          <button className="btn btn-danger btn-sm" onClick={() => handleDelete(row._id)}>
+          <Button
+            type="danger"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record._id)}
+          >
             Delete
-          </button>
-        </div>
+          </Button>
+        </Space>
       ),
-      width:"270px"
     },
   ];
 
   return (
     <div>
-      <div className="d-flex justify-content-between align-items-center mt-4 mb-4">
+      <div className="d-flex justify-content-between align-items-center mt-4 mb-3">
         <div>
           <h1>Review Management</h1>
-          <ol className="breadcrumb mb-4">
+          <ol className="breadcrumb mb-0">
             <li className="breadcrumb-item">
               <Link to="/admin">Dashboard</Link>
             </li>
             <li className="breadcrumb-item active">Reviews</li>
           </ol>
         </div>
-        <Link to="/admin/add-review" className="btn btn-primary">
-          Add Review
+        <Link to="/admin/add-review">
+          <Button type="primary">Add Review</Button>
         </Link>
       </div>
 
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder="Search reviews..."
-          className="form-control"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={filteredReviews}
-        pagination
-        highlightOnHover
-        responsive
-        striped
+      <Input
+        placeholder="Search reviews..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+        className="mb-3"
       />
 
-      {/* Reply Modal */}
-      <div
-        className="modal fade"
-        id="replyModal"
-        tabIndex="-1"
-        aria-labelledby="replyModalLabel"
-        aria-hidden="true"
+      <Table
+        columns={columns}
+        dataSource={filteredReviews}
+        rowKey={(record) => record._id}
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+        scroll={{ x: "max-content" }}
+      />
+
+      <Modal
+        title={selectedReview?.reply ? "Update Reply" : "Reply to Review"}
+        visible={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        onOk={handleReplySubmit}
+        okText={selectedReview?.reply ? "Update Reply" : "Add Reply"}
       >
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h5 className="modal-title">
-                {selectedReview?.reply ? "Update Reply" : "Reply to Review"}
-              </h5>
-              <button type="button" className="btn-close" data-bs-dismiss="modal" />
-            </div>
-            <div className="modal-body">
-              <textarea
-                className="form-control"
-                rows="3"
-                value={reply}
-                onChange={(e) => {
-                  setReply(e.target.value);
-                  setError("");
-                }}
-              ></textarea>
-              {error && <div className="text-danger mt-1">{error}</div>}
-              <button
-                type="button"
-                className="btn btn-primary mt-3"
-                onClick={handleReplySubmit}
-              >
-                {selectedReview?.reply ? "Update Reply" : "Add Reply"}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+        <Input.TextArea
+          rows={4}
+          value={reply}
+          onChange={(e) => setReply(e.target.value)}
+          placeholder="Type your reply here"
+        />
+      </Modal>
     </div>
   );
 };

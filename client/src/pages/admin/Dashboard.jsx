@@ -1,15 +1,23 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { FaBox, FaShoppingCart, FaUsers,FaThLarge  } from "react-icons/fa";
+import { Row, Col, Card, Typography, Button, Space } from "antd";
+import {
+  AppstoreOutlined,
+  ShoppingCartOutlined,
+  TagsOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
 import OrderTable from "../../components/admin/OrderTable";
 import axios from "axios";
+
+const { Title, Text } = Typography;
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
     totalActiveProducts: 0,
     totalOrders: 0,
     totalCategories: 0,
-    totalActiveUsers: 0
+    totalActiveUsers: 0,
   });
 
   useEffect(() => {
@@ -23,87 +31,91 @@ const Dashboard = () => {
         console.error("Error fetching dashboard data", err);
       }
     };
-
     fetchStats();
   }, []);
 
-  const { totalActiveProducts, totalOrders, totalCategories, totalActiveUsers } = stats;
+  const {
+    totalActiveProducts,
+    totalOrders,
+    totalCategories,
+    totalActiveUsers,
+  } = stats;
+
+  const cardData = [
+    {
+      title: "Total Products",
+      value: totalActiveProducts,
+      icon: <AppstoreOutlined style={{ fontSize: 32, color: "#1890ff" }} />,
+      link: "/admin/products",
+      color: "#e6f7ff",
+    },
+    {
+      title: "Total Orders",
+      value: totalOrders,
+      icon: <ShoppingCartOutlined style={{ fontSize: 32, color: "#52c41a" }} />,
+      link: "/admin/orders",
+      color: "#f6ffed",
+    },
+    {
+      title: "Total Categories",
+      value: totalCategories,
+      icon: <TagsOutlined style={{ fontSize: 32, color: "#faad14" }} />,
+      link: "/admin/categories",
+      color: "#fffbe6",
+    },
+    {
+      title: "Total Active Users",
+      value: totalActiveUsers,
+      icon: <UserOutlined style={{ fontSize: 32, color: "#f5222d" }} />,
+      link: "/admin/users",
+      color: "#fff1f0",
+    },
+  ];
 
   return (
     <div>
-      <h1 className="mt-4">Admin Dashboard</h1>
-      <ol className="breadcrumb mb-4">
-        <li className="breadcrumb-item active">Dashboard</li>
-      </ol>
+      <Title level={2} style={{ marginBottom: 24 }}>
+        Admin Dashboard
+      </Title>
 
-      <div className="row">
-        <div className="col-xl-3 col-md-6 mb-4">
-          <Link to="/admin/products" className="text-decoration-none">
-            <div className="card bg-primary text-white shadow">
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h5>Total Products</h5>
-                  <h2>{totalActiveProducts}</h2>
-                </div>
-                <FaBox size={32} />
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="col-xl-3 col-md-6 mb-4">
-          <Link to="/admin/orders" className="text-decoration-none">
-            <div className="card bg-success text-white shadow">
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h5>Total Orders</h5>
-                  <h2>{totalOrders}</h2>
-                </div>
-                <FaShoppingCart size={32} />
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="col-xl-3 col-md-6 mb-4">
-          <Link to="/admin/categories" className="text-decoration-none">
-            <div className="card bg-warning text-white shadow">
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h5>Total Categories</h5>
-                  <h2>{totalCategories}</h2>
-                </div>
-                <FaThLarge size={32} />
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        <div className="col-xl-3 col-md-6 mb-4">
-          <Link to="/admin/users" className="text-decoration-none">
-            <div className="card bg-danger text-white shadow">
-              <div className="card-body d-flex justify-content-between align-items-center">
-                <div>
-                  <h5>Total Active Users</h5>
-                  <h2>{totalActiveUsers}</h2>
-                </div>
-                <FaUsers size={32} />
-              </div>
-            </div>
-          </Link>
-        </div>
-      </div>
+      <Row gutter={[16, 16]}>
+        {cardData.map((card) => (
+          <Col xs={24} sm={12} md={12} lg={6} key={card.title}>
+            <Link to={card.link}>
+              <Card
+                style={{ backgroundColor: card.color, cursor: "pointer" }}
+                hoverable
+              >
+                <Space
+                  align="center"
+                  style={{ justifyContent: "space-between", width: "100%" }}
+                >
+                  <div>
+                    <Text strong>{card.title}</Text>
+                    <Title level={3} style={{ margin: 0 }}>
+                      {card.value}
+                    </Title>
+                  </div>
+                  {card.icon}
+                </Space>
+              </Card>
+            </Link>
+          </Col>
+        ))}
+      </Row>
 
       {/* Recent Orders Section */}
-      <div className="card mb-4 p-2">
-        <div className="card-header d-flex justify-content-between">
-          <h4>Recent Orders</h4>
-          <Link to="/admin/orders" className="btn btn-secondary">
-            See All Orders
+      <Card
+        title="Recent Orders"
+        extra={
+          <Link to="/admin/orders">
+            <Button type="default">See All Orders</Button>
           </Link>
-        </div>
+        }
+        style={{ marginTop: 24 }}
+      >
         <OrderTable />
-      </div>
+      </Card>
     </div>
   );
 };
